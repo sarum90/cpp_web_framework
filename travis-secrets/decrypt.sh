@@ -2,7 +2,6 @@
 
 set -e
 set -u
-set -x
 
 if [ ! -f private_key/private_key.pem ]; then
     echo "No private key. Cannot decrypt secrets."

@@ -2,7 +2,6 @@
 
 set -e
 set -u
-set -x
 
 for F in `cd decrypted/ && ls`
 do
