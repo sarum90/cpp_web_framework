@@ -13,7 +13,7 @@ mkdir -p decrypted/
 
 for F in `cd encrypted/ && ls`
 do
-  echo Decrypting... $F
+  #echo Decrypting... $F
   openssl rsautl -decrypt -inkey private_key/private_key.pem -in encrypted/$F -out decrypted/$F
-  echo Done
+  #echo Done
 done
