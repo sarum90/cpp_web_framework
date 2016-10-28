@@ -8,6 +8,7 @@ if [ ! -f private_key/private_key.pem ]; then
     exit -1
 fi
 
+mkdir -p decrypted/
 
 for F in $(cd encrypted/ && ls)
 do
