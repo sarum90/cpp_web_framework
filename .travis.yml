@@ -1,5 +1,13 @@
 language: generic
 
+addons:
+  apt:
+    sources:
+      - george-edison55-precise-backports # cmake 3.2.3 / doxygen 1.8.3
+    packages:
+      - cmake
+      - cmake-data
+
 install:
   - mkdir -p travis-secrets/private_key
   - echo ${TRAVIS_PRIVATE_KEY} | tr '_' '\n' > travis-secrets/private_key/private_key.pem
