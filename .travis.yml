@@ -10,4 +10,4 @@ install:
   - make deps
 
 script:
-  - make -C modules/mestring/
+  - make -C modules/mestring/ && ./modules/mestring/test_mestring && echo "PASSED!"
