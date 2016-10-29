@@ -6,7 +6,7 @@ install:
   - (cd travis-secrets/ && ./decrypt.sh)
   - cat travis-secrets/decrypted/sample_secret.txt
   - make cmake
-  - export $PATH=$PWD/build/root/native/cmake/bin:$PATH
+  - export PATH=$PWD/build/root/native/cmake/bin:$PATH
   - cmake --version
   - make emsdk
   - source build/root/native/emsdk/emsdk_env.sh
