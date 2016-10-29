@@ -7,7 +7,8 @@ install:
   - cat travis-secrets/decrypted/sample_secret.txt
   - make emsdk
   - source build/root/native/emsdk/emsdk_env.sh
+  - clang++ --version
   - make deps
 
 script:
-  - make -C modules/mestring/ && ./modules/mestring/test_mestring && echo "PASSED!"
+  - clang++ --version && make -C modules/mestring/ && ./modules/mestring/test_mestring && echo "PASSED!"
