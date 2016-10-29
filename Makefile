@@ -4,6 +4,10 @@
 all:
 	cd modules && $(MAKE)
 
+.PHONY: cmake
+cmake:
+	cd third_party/cmake/ && $(MAKE)
+
 .PHONY: emsdk
 emsdk:
 	cd third_party/emsdk/ && $(MAKE)
