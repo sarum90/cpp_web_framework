@@ -13,7 +13,7 @@ emsdk:
 	cd third_party/emsdk/ && $(MAKE)
 
 .PHONY: gcloud
-emsdk:
+gcloud:
 	cd third_party/gcloud/ && $(MAKE)
 
 .PHONY: deps
