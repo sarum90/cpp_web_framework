@@ -14,4 +14,4 @@ fi
 
 mkdir -p build
 cd build
-curl https://storage.googleapis.com/mewert-cpp-project-test-resources/deps/${DEP_HASH}.tar.gz | tar xvz
+curl https://storage.googleapis.com/mewert-cpp-project-test-resources/deps/${DEP_HASH}.tar.gz | tar xz
