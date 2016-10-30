@@ -7,8 +7,6 @@ mkdir -p /home/travis/build
 cd /home/travis/build
 git clone /repo repo
 cd repo
-ls -la
-ls -la tools/
 
 # Just take the private key manually.
 mkdir -p travis-secrets/private_key/
