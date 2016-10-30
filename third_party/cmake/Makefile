@@ -5,8 +5,6 @@ URL:=https://cmake.org/files/v3.6/cmake-3.6.2-Linux-x86_64.tar.gz
 
 FILENAME:=cmake-3.6.2-Linux-x86_64.tar.gz
 LOCAL_DL:=$(DOWNLOADS)/$(FILENAME)
-LOCAL_SRC:=$(SOURCES)/emsdk
-LOCAL_SRC_TOKEN:=$(LOCAL_SRC)/my_makefile_token
 
 CMAKE_NATIVE_TAG=$(NATIVE_TAGS)/cmake_tag
 
