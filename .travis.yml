@@ -1,6 +1,7 @@
 language: generic
 
 install:
+  - mkdir -p travis-secrets/private_key/
   - echo ${TRAVIS_PRIVATE_KEY} | tr '_' '\n' > travis-secrets/private_key/private_key.pem
   - ./tools/run_travis.sh
 
