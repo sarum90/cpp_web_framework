@@ -13,7 +13,6 @@ NATIVE_GCLOUD_PREFIX:=$(NATIVE_PREFIX)/gcloud
 $(GCLOUD_NATIVE_TAG): $(LOCAL_DL)
 	mkdir -p $(NATIVE_GCLOUD_PREFIX)
 	cd $(NATIVE_GCLOUD_PREFIX) && tar xvzf $(LOCAL_DL) --strip-components=1
-	exit -1
 	mkdir -p $(NATIVE_TAGS)
 	touch $(GCLOUD_NATIVE_TAG)
 
