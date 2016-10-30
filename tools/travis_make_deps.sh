@@ -10,7 +10,7 @@ make gcloud
 GCLOUD=./build/root/native/gcloud/bin/gcloud
 GSUTIL=./build/root/native/gcloud/bin/gsutil
 
-$GCLOUD auth activate-service-account --key-file=travis-secrets/decrypted/sample_secret.txt
+$GCLOUD auth activate-service-account --key-file=./travis-secrets/decrypted/mewert-cpp-project-6899912be999.json
 
 touch build/aaa
 $GSUTIL cp build/aaa gs://mewert-cpp-project-test-resources/test/
