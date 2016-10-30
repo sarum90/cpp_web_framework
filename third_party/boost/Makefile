@@ -3,7 +3,6 @@ include ./common.mk
 
 URL:=http://pilotfiber.dl.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.bz2
 SHA_256:=36c96b0f6155c98404091d8ceb48319a28279ca0333fba1ad8611eb90afb2ca0
-#SHA_256:=12c96b0f6155c98404091d8ceb48319a28279ca0333fba1ad8611eb90afb2ca0
 FILENAME:=boost_1_62_0.tar.bz2
 LOCAL_DL:=$(DOWNLOADS)/$(FILENAME)
 LOCAL_PRE:=$(LOCAL_DL).precheck
@@ -28,7 +27,7 @@ $(LOCAL_SRC_TOKEN): $(LOCAL_DL)
 	touch $(LOCAL_SRC_TOKEN)
 
 $(LOCAL_DL): $(LOCAL_PRE)
-	echo "$(SHA_256) $(LOCAL_PRE)" > $(LOCAL_SHACHECK)
+	echo "$(SHA_256)  $(LOCAL_PRE)" > $(LOCAL_SHACHECK)
 	sha256sum -c $(LOCAL_SHACHECK)
 	ln -s $(LOCAL_PRE) $(LOCAL_DL)
 
