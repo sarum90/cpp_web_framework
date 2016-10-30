@@ -5,6 +5,19 @@ set -u
 
 (cd travis-secrets/ && ./decrypt.sh)
 cat travis-secrets/decrypted/sample_secret.txt
+
+make gcloud
+GCLOUD=./build/root/native/gcloud/bin/gcloud
+GSUTIL=./build/root/native/gcloud/bin/gsutil
+
+$GCLOUD auth activate-service-account --key-file=travis-secrets/decrypted/sample_secret.txt
+
+touch build/aaa
+$GSUTIL cp build/aaa gs://mewert-cpp-project-test-resources/test/
+
+echo "DONE!"
+
+exit -1
 sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
 sudo -E apt-get -yq update &>> ~/apt-get-update.log
 sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install gcc-4.8 g++-4.8

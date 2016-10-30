@@ -12,6 +12,10 @@ cmake:
 emsdk:
 	cd third_party/emsdk/ && $(MAKE)
 
+.PHONY: gcloud
+emsdk:
+	cd third_party/gcloud/ && $(MAKE)
+
 .PHONY: deps
 deps:
 	cd third_party && $(MAKE)
