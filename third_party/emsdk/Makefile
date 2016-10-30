@@ -18,13 +18,8 @@ $(EMSDK_NATIVE_TAG): $(LOCAL_DL)
 	cd $(NATIVE_EMSDK_PREFIX) && ./emsdk update
 	cd $(NATIVE_EMSDK_PREFIX) && ./emsdk install sdk-tag-1.36.13-32bit
 	cd $(NATIVE_EMSDK_PREFIX) && ./emsdk activate sdk-tag-1.36.13-32bit
+	mkdir -p $(NATIVE_TAGS)
 	touch $(EMSDK_NATIVE_TAG)
-	exit -1
-	#mkdir -p $(NATIVE_BOOST_PREFIX)
-	#cd $(LOCAL_SRC)/boost_1_62_0 && ./bootstrap.sh --with-toolset=clang --prefix=$(NATIVE_BOOST_PREFIX)
-	#cd $(LOCAL_SRC)/boost_1_62_0 && ./b2 install
-	#mkdir -p $(NATIVE_TAGS)
-	#touch $(EMSDK_NATIVE_TAG)
 
 $(LOCAL_DL):
 	mkdir -p $(DOWNLOADS)
