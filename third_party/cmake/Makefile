@@ -12,7 +12,7 @@ NATIVE_CMAKE_PREFIX:=$(NATIVE_PREFIX)/cmake
 
 $(CMAKE_NATIVE_TAG): $(LOCAL_DL)
 	mkdir -p $(NATIVE_CMAKE_PREFIX)
-	cd $(NATIVE_CMAKE_PREFIX) && tar xvzf $(LOCAL_DL) --strip-components=1
+	cd $(NATIVE_CMAKE_PREFIX) && tar xvzf $(LOCAL_DL) --strip-components=1 cmake-3.6.2-Linux-x86_64/bin
 	mkdir -p $(NATIVE_TAGS)
 	touch $(CMAKE_NATIVE_TAG)
 
