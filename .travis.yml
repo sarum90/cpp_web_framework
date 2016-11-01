@@ -8,7 +8,6 @@ addons:
       - libstdc++6
 
 install:
-  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 60 --slave /usr/bin/g++ g++ /usr/bin/g++-4.8
   - mkdir -p travis-secrets/private_key/
   - echo ${TRAVIS_PRIVATE_KEY} | tr '_' '\n' > travis-secrets/private_key/private_key.pem
   - source ./tools/run_travis.sh
