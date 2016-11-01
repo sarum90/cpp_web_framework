@@ -9,6 +9,3 @@ set -e
 
 export PATH=$PWD/build/root/native/cmake/bin:$PATH
 source build/root/native/emsdk/emsdk_env.sh
-
-
-make -C modules/mestring/
