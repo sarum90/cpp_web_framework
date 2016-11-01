@@ -1,7 +1,7 @@
 C++ Web Framework
 =================
 
-This is my attempt at making a frontend/backend framework for C++. Tests run on travis.
+This is my attempt at making a frontend/backend framework for C++.
 
 This is constructed using emscripten, and assumes you have that set up on your
 computer both for compilation to javascript and for native compilation:
