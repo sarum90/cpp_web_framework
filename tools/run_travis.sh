@@ -8,6 +8,4 @@ set -e
 
 ./tools/get_deps.sh
 
-export PATH=`pwd`/build/root/native/cmake/bin:$PATH
-
-echo "DONE with run_travis"
+echo "DONE with setup_travis"

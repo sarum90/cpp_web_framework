@@ -11,9 +11,7 @@ install:
   - mkdir -p travis-secrets/private_key/
   - echo ${TRAVIS_PRIVATE_KEY} | tr '_' '\n' > travis-secrets/private_key/private_key.pem
   - echo ${SHELL}
-  - source ./tools/run_travis.sh
-  - echo "Sourcing EMSDK"
-  - source ./build/root/native/emsdk/emsdk_env.sh
+  - ./tools/run_travis.sh
 
 script:
-  - clang++ --version && make -C modules/mestring/ && ./modules/mestring/test_mestring && echo "PASSED!"
+  - ./tools/run_on_travis.sh
