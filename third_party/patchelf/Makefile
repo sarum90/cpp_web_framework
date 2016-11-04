@@ -15,6 +15,7 @@ PATCHELF_NATIVE_TAG=$(NATIVE_TAGS)/patchelf
 $(PATCHELF_NATIVE_TAG): $(PATCHELF_NATIVE_TAG) $(LOCAL_SRC_TOKEN)
 	mkdir -p $(NATIVE_PATCHELF_PREFIX)
 	cd $(LOCAL_INNER_SRC) && ls -la
+	cd $(LOCAL_INNER_SRC) && sed -i 's/ serial-tests//g' configure.ac
 	cd $(LOCAL_INNER_SRC) && $(WRAPPER) ./bootstrap.sh
 	cd $(LOCAL_INNER_SRC) && $(WRAPPER) ./configure --prefix=$(NATIVE_PATCHELF_PREFIX)
 	cd $(LOCAL_INNER_SRC) && $(WRAPPER) make
