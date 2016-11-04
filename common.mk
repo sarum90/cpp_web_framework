@@ -7,3 +7,9 @@ PREFIX:=$(BUILD)/root
 EMS_PREFIX:=$(PREFIX)/emscripten
 NATIVE_PREFIX:=$(PREFIX)/native
 NATIVE_TAGS=$(NATIVE_PREFIX)/tags
+
+PYENV=$(NATIVE_PREFIX)/python_env
+PYSOURCE=$(PYENV)/bin/activate
+PIP_ENV_NATIVE_TAG=$(NATIVE_TAGS)/pip_env_tag
+
+WRAPPER=$(ROOT)/tools/wrapper.sh

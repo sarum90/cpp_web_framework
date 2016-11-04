@@ -1,7 +1,7 @@
 
 include ./common.mk
 
-URL:=http://pilotfiber.dl.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.bz2
+URL:=https://storage.googleapis.com/mewert-cpp-project-test-resources/srcs/boost_1_62_0.tar.bz2
 SHA_256:=36c96b0f6155c98404091d8ceb48319a28279ca0333fba1ad8611eb90afb2ca0
 FILENAME:=boost_1_62_0.tar.bz2
 LOCAL_DL:=$(DOWNLOADS)/$(FILENAME)
@@ -16,8 +16,8 @@ NATIVE_BOOST_PREFIX:=$(NATIVE_PREFIX)/boost
 
 $(BOOST_NATIVE_TAG): $(LOCAL_SRC_TOKEN)
 	mkdir -p $(NATIVE_BOOST_PREFIX)
-	cd $(LOCAL_SRC)/boost_1_62_0 && ./bootstrap.sh --with-toolset=clang --prefix=$(NATIVE_BOOST_PREFIX)
-	cd $(LOCAL_SRC)/boost_1_62_0 && ./b2 install
+	cd $(LOCAL_SRC)/boost_1_62_0 && $(WRAPPER) ./bootstrap.sh --with-toolset=clang --prefix=$(NATIVE_BOOST_PREFIX)
+	cd $(LOCAL_SRC)/boost_1_62_0 && $(WRAPPER) ./b2 toolset=clang cxxflags=-std=c++1z install
 	mkdir -p $(NATIVE_TAGS)
 	touch $(BOOST_NATIVE_TAG)
 
