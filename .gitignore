@@ -1,3 +1,5 @@
 /build
+/travis-secrets/private_key/
+/travis-secrets/decrypted/
 *.swo
 *.swp

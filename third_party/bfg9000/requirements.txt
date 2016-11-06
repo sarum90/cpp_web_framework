@@ -1,0 +1,9 @@
+bfg9000==0.2.0
+colorama==0.3.7
+doppel==0.2.0
+enum34==1.1.6
+packaging==16.8
+patchelf-wrapper==1.0.1
+pyparsing==2.1.10
+six==1.10.0
+lxml==3.6.4
