@@ -34,8 +34,9 @@ class reactor {
 
     void run_work() {
       if(!_queue.empty()) {
-        _queue.front()->run();
+        auto ptr = std::move(_queue.front());
         _queue.pop_front();
+        ptr->run();
       }
       if(!_queue.empty()) {
         schedule_work();
@@ -48,23 +49,18 @@ class reactor {
     boost::asio::io_service io_service_;
 };
 
+struct reactor_setter {
+  public:
+    reactor_setter(reactor* newval);
+
+    ~reactor_setter();
+  private:
+    reactor* oldval;
+};
+
 namespace net {
 
-
-
 future<boost::asio::ip::tcp::resolver::iterator> resolve_tcp(
-    reactor* r, const boost::asio::ip::tcp::resolver::endpoint_type& endpoint) {
-  promise<boost::asio::ip::tcp::resolver::iterator> ret_promise;
-  auto retval = ret_promise.get_future();
-  boost::asio::ip::tcp::resolver resolver(r->io_service_);
-  auto x = [p=std::move(ret_promise)](const auto& error, auto iter) mutable {
-    p.set_value(iter);
-  };
-  auto handler = std::make_shared<decltype(x)>(std::move(x));
-  resolver.async_resolve(endpoint, [h=std::move(handler)](const auto& error, auto iter) mutable {
-      return (*h)(error, iter);
-  });
-  return std::move(retval);
-}
+    reactor* r, const boost::asio::ip::tcp::resolver::endpoint_type& endpoint);
 
 }

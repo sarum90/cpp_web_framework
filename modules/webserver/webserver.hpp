@@ -2,9 +2,12 @@
 
 #include "reactor.hpp"
 
+#include "future/do_with.hh"
+
 #include <iostream>
 #include <functional>
 #include <map>
+#include <sstream>
 
 namespace webserver {
 
@@ -25,6 +28,10 @@ class router {
       routes_.insert(std::make_pair(s, r));
     }
 
+    route& getRoute(std::string& s) {
+      return routes_[s];
+    }
+
   private:
     std::map<std::string, route> routes_;
 };
@@ -34,11 +41,41 @@ class connection {
     connection(std::unique_ptr<boost::asio::ip::tcp::socket> socket):
       socket_(std::move(socket)){}
 
-    void load() {
+    future<std::string, std::string> get_info() {
       read_more();
+      return result_.get_future();
+    }
+
+    auto send_response(const std::string& s) {
+      buffer_to_send_ = s;
+      send_offset_ = 0;
+      send_as_much_as_possible();
+      return send_promise_.get_future();
     }
 
   private:
+
+    void send_as_much_as_possible() {
+      socket_->async_write_some(
+          boost::asio::buffer(&buffer_to_send_[send_offset_], buffer_to_send_.size() - send_offset_),
+          [this](const boost::system::error_code& ec, size_t bytes) {
+            sent_data(ec, bytes);
+          }
+      );
+    }
+
+    void sent_data(const boost::system::error_code& ec, size_t bytes) {
+      if (ec) {
+        send_promise_.set_exception(ec);
+        return;
+      }
+      send_offset_ += bytes;
+      if (send_offset_ == buffer_to_send_.size()) {
+        send_promise_.set_value();
+      } else {
+        send_as_much_as_possible();
+      }
+    }
 
     void read_more() {
       socket_->async_read_some(
@@ -50,17 +87,39 @@ class connection {
     }
 
     void receive_data(const boost::system::error_code& ec, size_t bytes) {
+      if (ec) {
+        result_.set_exception(ec);
+        return;
+      }
       request_content_ += std::string{buffer_.begin(), bytes};
       process_content();
     }
 
     void process_content() {
-      std::cout << request_content_ << std::endl;
+      auto pos = request_content_.find("\r\n\r\n");
+      if (pos == std::string::npos) {
+        std::cout << "Need to get more! UNTESTED!" << std::endl;
+        // TODO: Test.
+        read_more();
+      } else {
+        parse_content(request_content_);
+      }
+    }
+
+    void parse_content(const std::string& s) {
+      std::istringstream iss(s);
+      std::string method, path;
+      iss >> method >> path;
+      result_.set_value(method, path);
     }
 
     std::unique_ptr<boost::asio::ip::tcp::socket> socket_;
     std::string request_content_;
     std::array<char, 4096> buffer_;
+    std::string buffer_to_send_;
+    int send_offset_;
+    promise<std::string, std::string> result_;
+    promise<> send_promise_;
 };
 
 class server {
@@ -83,10 +142,34 @@ class server {
   private:
     template <class T>
     void handle_connection(T&& t) {
-      t.then([](auto socket) {
-        connection* c = new connection{std::move(socket)};
-        c->load();
-      });
+      do_with(
+          std::unique_ptr<connection>{nullptr},
+          [t=std::move(t), this](std::unique_ptr<connection>& c) mutable {
+            return t.then([&c](auto socket) {
+              c.reset(new connection{std::move(socket)});
+              return c->get_info();
+            }).then([&c, this](std::string method, std::string path) mutable {
+              std::cout << method << " : " << path<< std::endl;
+              auto r = router_.getRoute(path);
+              if (r) {
+                request req{};
+                response res{};
+                return c->send_response(
+                  "HTTP/1.1 200 OK\r\n"
+                  "Content-Type: text/plain; charset=us-ascii\r\n"
+                  "\r\n" + r(req, res).str
+                );
+              } else {
+                return c->send_response(
+                  "HTTP/1.1 404 OK\r\n"
+                  "Content-Type: text/plain; charset=us-ascii\r\n"
+                  "\r\n"
+                  "Endpoint not found."
+                );
+              }
+            });
+          }
+      );
     }
 
 		void do_accept(reactor * r) {
@@ -98,12 +181,12 @@ class server {
       auto x = [this, r=r, s=std::move(socket), p=std::move(ret_promise)](const boost::system::error_code& ec) mutable {
         if (ec) {
           p.set_exception(ec);
-        } else {
-          if (!shutting_down_) {
-            do_accept(r);
-          }
-          p.set_value(std::move(s));
+          return;
         }
+        if (!shutting_down_) {
+          do_accept(r);
+        }
+        p.set_value(std::move(s));
       };
       auto handler = std::make_shared<decltype(x)>(std::move(x));
 
@@ -115,7 +198,6 @@ class server {
 		}
 
     class router router_;
-
 		std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_ = nullptr;
     bool shutting_down_ = false;
 };
