@@ -1,0 +1,7 @@
+This code is taken with modification from the Seastar project:
+
+- http://www.seastar-project.org/
+- https://github.com/scylladb/seastar
+
+And is under the license used for that project. Full text of the license is
+copied in the file named LICENSE. This only refers to files in this directory.
