@@ -25,7 +25,7 @@ class router {
 
   public:
     void addRoute(const std::string& s, route r) {
-      routes_.insert(std::make_pair(s, r));
+      routes_.insert(std::make_pair(s, std::move(r)));
     }
 
     route& getRoute(std::string& s) {
@@ -139,9 +139,22 @@ class server {
       do_accept(r);
 		}
 
+    future<> finish_outstanding() {
+      shutting_down_ = true;
+      acceptor_->close();
+      if (outstanding_requests_ == 0) {
+        outstanding_finished_.set_value();
+      }
+      return outstanding_finished_.get_future();
+    }
+
   private:
     template <class T>
     void handle_connection(T&& t) {
+      if (shutting_down_) {
+        return;
+      }
+      outstanding_requests_++;
       do_with(
           std::unique_ptr<connection>{nullptr},
           [t=std::move(t), this](std::unique_ptr<connection>& c) mutable {
@@ -161,7 +174,7 @@ class server {
                 );
               } else {
                 return c->send_response(
-                  "HTTP/1.1 404 OK\r\n"
+                  "HTTP/1.1 404 Not Found\r\n"
                   "Content-Type: text/plain; charset=us-ascii\r\n"
                   "\r\n"
                   "Endpoint not found."
@@ -169,7 +182,12 @@ class server {
               }
             });
           }
-      );
+      ).then([this]() {
+        outstanding_requests_--;
+        if (shutting_down_ && outstanding_requests_ == 0) {
+          outstanding_finished_.set_value();
+        }
+      });
     }
 
 		void do_accept(reactor * r) {
@@ -179,13 +197,15 @@ class server {
       auto retval = ret_promise.get_future();
 
       auto x = [this, r=r, s=std::move(socket), p=std::move(ret_promise)](const boost::system::error_code& ec) mutable {
+        if (shutting_down_) {
+          return;
+        }
         if (ec) {
+          std::cout << "Error! " << ec << std::endl;
           p.set_exception(ec);
           return;
         }
-        if (!shutting_down_) {
-          do_accept(r);
-        }
+        do_accept(r);
         p.set_value(std::move(s));
       };
       auto handler = std::make_shared<decltype(x)>(std::move(x));
@@ -200,6 +220,8 @@ class server {
     class router router_;
 		std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_ = nullptr;
     bool shutting_down_ = false;
+    int outstanding_requests_ = 0;
+    promise<> outstanding_finished_;
 };
 
 }
