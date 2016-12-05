@@ -6,7 +6,7 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - libstdc++-6-dev
-      - libstdc++-6
+      - libstdc++6
 
 install:
   - mkdir -p travis-secrets/private_key/
