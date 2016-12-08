@@ -5,9 +5,15 @@
 #include "future/do_with.hh"
 
 #include <iostream>
+#include <fstream>
 #include <functional>
 #include <map>
 #include <sstream>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 namespace webserver {
 
@@ -235,6 +241,15 @@ server create_server(L l) {
 
 return_type plaintext_response(response& r, const std::string& str) {
   return {str};
+}
+
+return_type file_response(response& r, const std::string& str) {
+  int fd = ::open(str.c_str(), 0);
+  std::string contents(409600, ' ');
+  size_t rs = ::read(fd, &contents[0], 409600);
+  contents.resize(rs);
+  ::close(fd);
+  return {contents};
 }
 
 void register_server(server& s, reactor* r) {

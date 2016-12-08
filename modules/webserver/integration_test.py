@@ -53,6 +53,7 @@ class TestHTTPServer(unittest.TestCase):
 
         self.addCleanup(cleanup)
         self.assertEqual(server.get_url(""), (200, "Hello World"))
+        self.assertEqual(server.get_url("file"), (200, "Hello world\nFrom a file\n"))
         self.assertEqual(server.get_url("notfound"), (404, None))
 
 
