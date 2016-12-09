@@ -20,7 +20,9 @@ namespace webserver {
 namespace {
 
 struct request { };
-struct response { };
+struct response {
+  std::string type;
+};
 struct return_type{
   std::string str;
 };
@@ -172,11 +174,12 @@ class server {
               auto r = router_.getRoute(path);
               if (r) {
                 request req{};
-                response res{};
+                response res{"text/plain"};
+                auto body = r(req, res).str;
                 return c->send_response(
                   "HTTP/1.1 200 OK\r\n"
-                  "Content-Type: text/plain; charset=us-ascii\r\n"
-                  "\r\n" + r(req, res).str
+                  "Content-Type: " + res.type + "; charset=us-ascii\r\n"
+                  "\r\n" + body
                 );
               } else {
                 return c->send_response(
@@ -244,9 +247,16 @@ return_type plaintext_response(response& r, const std::string& str) {
 }
 
 return_type file_response(response& r, const std::string& str) {
+  auto s = str.size();
+  if (s > 5 && std::string{str.end() - 5, str.end()} == ".html") {
+    r.type = "text/html";
+  }
+  if (s > 3 && std::string{str.end() - 3, str.end()} == ".js") {
+    r.type = "application/x-javascript";
+  }
   int fd = ::open(str.c_str(), 0);
-  std::string contents(409600, ' ');
-  size_t rs = ::read(fd, &contents[0], 409600);
+  std::string contents(4096000, ' ');
+  size_t rs = ::read(fd, &contents[0], 4096000);
   contents.resize(rs);
   ::close(fd);
   return {contents};

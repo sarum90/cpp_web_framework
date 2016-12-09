@@ -4,7 +4,8 @@ BUILD:=$(ROOT)/build
 DOWNLOADS:=$(BUILD)/downloads
 SOURCES:=$(BUILD)/src
 PREFIX:=$(BUILD)/root
-EMS_PREFIX:=$(PREFIX)/emscripten
+EMS_PREFIX:=$(PREFIX)/ems
+EMS_TAGS:=$(EMS_PREFIX)/tags
 NATIVE_PREFIX:=$(PREFIX)/native
 NATIVE_TAGS=$(NATIVE_PREFIX)/tags
 
@@ -13,3 +14,4 @@ PYSOURCE=$(PYENV)/bin/activate
 PIP_ENV_NATIVE_TAG=$(NATIVE_TAGS)/pip_env_tag
 
 WRAPPER=$(ROOT)/tools/wrapper.sh
+CLIENT_WRAPPER=$(ROOT)/tools/client-wrapper.sh
