@@ -39,6 +39,7 @@ export BOOST_ROOT=${ROOT}/build/root/native/boost
 
 INCLUDES="
 build/root/native/boost/include
+build/root/native/mettle/include
 "
 INCLUDE_FLAGS=$(for x in $INCLUDES; do echo -n "-I${ROOT}/$x "; done)
 
@@ -51,6 +52,7 @@ export CCFLAGS="$COMMON_FLAGS"
 LIBDIRS="
 build/root/native/boost/lib/
 build/root/native/boost/bin/
+build/root/native/mettle/lib/
 "
 LIBDIR_FLAGS=$(for x in $LIBDIRS; do echo -n "-L${ROOT}/$x "; done)
 

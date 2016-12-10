@@ -6,11 +6,28 @@
 #include <boost/asio.hpp>
 #include "future/future.hh"
 
-class reactor {
+class reactor;
+
+struct reactor_setter {
+  public:
+    reactor_setter(reactor* newval);
+
+    ~reactor_setter();
+  private:
+    reactor* oldval;
+};
+
+class reactor : public scheduler {
   public:
     reactor(): io_service_(1){}
 
+    template <class... T>
+    promise<T...> make_promise() {
+      return promise<T...>(this);
+    }
+
     void run() {
+      reactor_setter rs(this);
       io_service_.run();
     }
 
@@ -18,7 +35,7 @@ class reactor {
 
     }
 
-    void add_task(std::unique_ptr<task> t) {
+    void schedule(std::unique_ptr<task> t) final override {
       _queue.push_back(std::move(t));
       schedule_work();
     }
@@ -49,14 +66,15 @@ class reactor {
     boost::asio::io_service io_service_;
 };
 
-struct reactor_setter {
-  public:
-    reactor_setter(reactor* newval);
-
-    ~reactor_setter();
-  private:
-    reactor* oldval;
+struct executing_reactor {
+  ~executing_reactor() {r.run();}
+  reactor r;
 };
+
+template <class T>
+void schedule(reactor& r, T&& t) {
+  r.schedule(make_task(std::forward<T>(t)));
+}
 
 namespace net {
 

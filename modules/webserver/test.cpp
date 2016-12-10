@@ -3,10 +3,10 @@
 using namespace webserver;
 
 auto setup_server(reactor* r) {
-  promise<> pr;
+  auto pr = r->make_promise<>();
   auto f = pr.get_future();
 
-  auto s = std::make_unique<server>(create_server([pr=std::move(pr)](auto& _) constexpr mutable {
+  auto s = std::make_unique<server>(create_server(r, [pr=std::move(pr)](auto& _) constexpr mutable {
     _.addRoute("/hw", [](auto& req, auto& resp) constexpr {
       return plaintext_response(resp, "Hello World");
     });

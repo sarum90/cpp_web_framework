@@ -46,8 +46,11 @@ class router {
 
 class connection {
   public:
-    connection(std::unique_ptr<boost::asio::ip::tcp::socket> socket):
-      socket_(std::move(socket)){}
+    connection(reactor * r, std::unique_ptr<boost::asio::ip::tcp::socket> socket):
+      socket_(std::move(socket)),
+      result_(r->make_promise<std::string, std::string>()),
+      send_promise_(r->make_promise<>())
+    {}
 
     future<std::string, std::string> get_info() {
       read_more();
@@ -132,6 +135,8 @@ class connection {
 
 class server {
   public:
+    server(reactor * r): reactor_(r) {}
+
     class router& router() {return router_;}
 
 		void start_listening(
@@ -166,8 +171,8 @@ class server {
       do_with(
           std::unique_ptr<connection>{nullptr},
           [t=std::move(t), this](std::unique_ptr<connection>& c) mutable {
-            return t.then([&c](auto socket) {
-              c.reset(new connection{std::move(socket)});
+            return t.then([&c, r=reactor_](auto socket) {
+              c.reset(new connection{r, std::move(socket)});
               return c->get_info();
             }).then([&c, this](std::string method, std::string path) mutable {
               std::cout << method << " : " << path<< std::endl;
@@ -202,7 +207,7 @@ class server {
 		void do_accept(reactor * r) {
       auto socket = std::make_unique<boost::asio::ip::tcp::socket>(r->io_service_);
       auto* sref = socket.get();
-      promise<std::unique_ptr<boost::asio::ip::tcp::socket>> ret_promise;
+      auto ret_promise = r->make_promise<std::unique_ptr<boost::asio::ip::tcp::socket>>();
       auto retval = ret_promise.get_future();
 
       auto x = [this, r=r, s=std::move(socket), p=std::move(ret_promise)](const boost::system::error_code& ec) mutable {
@@ -227,17 +232,18 @@ class server {
 		}
 
     class router router_;
+    reactor * reactor_;
 		std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_ = nullptr;
     bool shutting_down_ = false;
     int outstanding_requests_ = 0;
-    promise<> outstanding_finished_;
+    promise<> outstanding_finished_ = reactor_->make_promise<>();
 };
 
 }
 
 template <class L>
-server create_server(L l) {
-  server s;
+server create_server(reactor * r, L l) {
+  server s(r);
   l(s.router());
   return s;
 }
