@@ -20,7 +20,7 @@ cd repo
 # Install deps.
 sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
 sudo -E apt-get -yq update &>> ~/apt-get-update.log
-sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install libstdc++-6-dev libstdc++6
+sudo -E apt-get -yq --no-install-suggests --no-install-recommends --force-yes install libstdc++-6-dev libstdc++6 libc6:i386 libstdc++6:i386
 
 # Just take the private key manually.
 mkdir -p travis-secrets/private_key/
