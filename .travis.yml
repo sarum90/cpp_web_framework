@@ -7,6 +7,8 @@ addons:
     packages:
       - libstdc++-6-dev
       - libstdc++6
+      - libc6:i386
+      - libstdc++6:i386
 
 install:
   - mkdir -p travis-secrets/private_key/
