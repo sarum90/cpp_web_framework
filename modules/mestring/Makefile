@@ -1,10 +1,13 @@
-
 include ../../common.mk
+SRCS:= ./test_mestring.cpp mestring.cpp
+
+.PHONY: default
+default: test
+
+.PHONY: all
+all:
+	$(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system'
 
 .PHONY: test
-test: build
-	./test_mestring
-
-.PHONY: build
-build:
-	$(CXX) -std=c++1z test_mestring.cpp mestring.cpp -o test_mestring
+test: all
+	$(WRAPPER) mettle --output=verbose --color=always ./test
