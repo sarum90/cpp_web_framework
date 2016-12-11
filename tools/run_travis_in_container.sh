@@ -13,4 +13,4 @@ mkdir -p travis-secrets/private_key/
 cp /repo/travis-secrets/private_key/private_key.pem travis-secrets/private_key/
 
 ./tools/run_travis.sh
-
+./tools/run_on_travis.sh
