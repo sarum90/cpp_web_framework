@@ -3,11 +3,24 @@
 using namespace webserver;
 
 auto setup_server(reactor* r) {
-  promise<> pr;
+  auto pr = r->make_promise<>();
   auto f = pr.get_future();
-  auto s = std::make_unique<server>(create_server([pr=std::move(pr)](auto& _) constexpr mutable {
-    _.addRoute("/", [](auto& req, auto& resp) constexpr {
+
+  auto s = std::make_unique<server>(create_server(r, [pr=std::move(pr)](auto& _) constexpr mutable {
+    _.addRoute("/hw", [](auto& req, auto& resp) constexpr {
       return plaintext_response(resp, "Hello World");
+    });
+
+    _.addRoute("/file", [](auto& req, auto& resp) constexpr {
+      return file_response(resp, "test.txt");
+    });
+
+    _.addRoute("/client.js", [](auto& req, auto& resp) constexpr {
+      return file_response(resp, "client.js");
+    });
+
+    _.addRoute("/", [](auto& req, auto& resp) constexpr {
+      return file_response(resp, "index.html");
     });
 
     auto l = [pr=std::move(pr)](auto& req, auto& resp) constexpr mutable {

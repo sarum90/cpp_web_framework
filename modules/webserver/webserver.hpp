@@ -5,16 +5,24 @@
 #include "future/do_with.hh"
 
 #include <iostream>
+#include <fstream>
 #include <functional>
 #include <map>
 #include <sstream>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 namespace webserver {
 
 namespace {
 
 struct request { };
-struct response { };
+struct response {
+  std::string type;
+};
 struct return_type{
   std::string str;
 };
@@ -38,8 +46,11 @@ class router {
 
 class connection {
   public:
-    connection(std::unique_ptr<boost::asio::ip::tcp::socket> socket):
-      socket_(std::move(socket)){}
+    connection(reactor * r, std::unique_ptr<boost::asio::ip::tcp::socket> socket):
+      socket_(std::move(socket)),
+      result_(r->make_promise<std::string, std::string>()),
+      send_promise_(r->make_promise<>())
+    {}
 
     future<std::string, std::string> get_info() {
       read_more();
@@ -124,6 +135,8 @@ class connection {
 
 class server {
   public:
+    server(reactor * r): reactor_(r) {}
+
     class router& router() {return router_;}
 
 		void start_listening(
@@ -158,19 +171,20 @@ class server {
       do_with(
           std::unique_ptr<connection>{nullptr},
           [t=std::move(t), this](std::unique_ptr<connection>& c) mutable {
-            return t.then([&c](auto socket) {
-              c.reset(new connection{std::move(socket)});
+            return t.then([&c, r=reactor_](auto socket) {
+              c.reset(new connection{r, std::move(socket)});
               return c->get_info();
             }).then([&c, this](std::string method, std::string path) mutable {
               std::cout << method << " : " << path<< std::endl;
               auto r = router_.getRoute(path);
               if (r) {
                 request req{};
-                response res{};
+                response res{"text/plain"};
+                auto body = r(req, res).str;
                 return c->send_response(
                   "HTTP/1.1 200 OK\r\n"
-                  "Content-Type: text/plain; charset=us-ascii\r\n"
-                  "\r\n" + r(req, res).str
+                  "Content-Type: " + res.type + "; charset=us-ascii\r\n"
+                  "\r\n" + body
                 );
               } else {
                 return c->send_response(
@@ -193,7 +207,7 @@ class server {
 		void do_accept(reactor * r) {
       auto socket = std::make_unique<boost::asio::ip::tcp::socket>(r->io_service_);
       auto* sref = socket.get();
-      promise<std::unique_ptr<boost::asio::ip::tcp::socket>> ret_promise;
+      auto ret_promise = r->make_promise<std::unique_ptr<boost::asio::ip::tcp::socket>>();
       auto retval = ret_promise.get_future();
 
       auto x = [this, r=r, s=std::move(socket), p=std::move(ret_promise)](const boost::system::error_code& ec) mutable {
@@ -218,23 +232,40 @@ class server {
 		}
 
     class router router_;
+    reactor * reactor_;
 		std::unique_ptr<boost::asio::ip::tcp::acceptor> acceptor_ = nullptr;
     bool shutting_down_ = false;
     int outstanding_requests_ = 0;
-    promise<> outstanding_finished_;
+    promise<> outstanding_finished_ = reactor_->make_promise<>();
 };
 
 }
 
 template <class L>
-server create_server(L l) {
-  server s;
+server create_server(reactor * r, L l) {
+  server s(r);
   l(s.router());
   return s;
 }
 
 return_type plaintext_response(response& r, const std::string& str) {
   return {str};
+}
+
+return_type file_response(response& r, const std::string& str) {
+  auto s = str.size();
+  if (s > 5 && std::string{str.end() - 5, str.end()} == ".html") {
+    r.type = "text/html";
+  }
+  if (s > 3 && std::string{str.end() - 3, str.end()} == ".js") {
+    r.type = "application/x-javascript";
+  }
+  int fd = ::open(str.c_str(), 0);
+  std::string contents(4096000, ' ');
+  size_t rs = ::read(fd, &contents[0], 4096000);
+  contents.resize(rs);
+  ::close(fd);
+  return {contents};
 }
 
 void register_server(server& s, reactor* r) {

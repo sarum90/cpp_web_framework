@@ -34,6 +34,11 @@
 #include <cstdlib>
 #include "function_traits.hh"
 
+class scheduler {
+  public:
+    virtual void schedule(std::unique_ptr<task> t) = 0;
+};
+
 
 /// \defgroup future-module Futures and Promises
 ///
@@ -81,7 +86,7 @@ class future;
 /// to perform a computation (for example, because the data is cached
 /// in some buffer).
 template <typename... T, typename... A>
-future<T...> make_ready_future(A&&... value);
+future<T...> make_ready_future(scheduler * s, A&&... value);
 
 /// \brief Creates a \ref future in an available, failed state.
 ///
@@ -90,7 +95,7 @@ future<T...> make_ready_future(A&&... value);
 /// a computation (for example, because the connection is closed and
 /// we cannot read from it).
 template <typename... T>
-future<T...> make_exception_future(std::exception_ptr value) noexcept;
+future<T...> make_exception_future(scheduler * s, std::exception_ptr value) noexcept;
 
 /// \cond internal
 void engine_exit(std::exception_ptr eptr = {});
@@ -400,6 +405,7 @@ struct continuation final : task {
 ///
 template <typename... T>
 class promise {
+    scheduler * const _scheduler;
     future<T...>* _future = nullptr;
     future_state<T...> _local_state;
     future_state<T...>* _state;
@@ -409,10 +415,10 @@ public:
     /// \brief Constructs an empty \c promise.
     ///
     /// Creates promise with no associated future yet (see get_future()).
-    promise() noexcept : _state(&_local_state) {}
+    promise(scheduler * s) noexcept : _scheduler(s), _state(&_local_state) {}
 
     /// \brief Moves a \c promise object.
-    promise(promise&& x) noexcept : _future(x._future), _state(x._state), _task(std::move(x._task)) {
+    promise(promise&& x) noexcept : _scheduler(x._scheduler), _future(x._future), _state(x._state), _task(std::move(x._task)) {
         if (_state == &x._local_state) {
             _state = &_local_state;
             _local_state = std::move(x._local_state);
@@ -558,25 +564,25 @@ struct futurize {
     /// Apply a function to an argument list (expressed as a tuple)
     /// and return the result, as a future (if it wasn't already).
     template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
+    static inline type apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
 
     /// Apply a function to an argument list
     /// and return the result, as a future (if it wasn't already).
     template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
+    static inline type apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept;
 
     /// Convert a value or a future to a future
-    static inline type convert(T&& value) { return make_ready_future<T>(std::move(value)); }
-    static inline type convert(type&& value) { return std::move(value); }
+    static inline type convert(scheduler * s, T&& value) { return make_ready_future<T>(std::move(value)); }
+    static inline type convert(scheduler * s, type&& value) { return std::move(value); }
 
     /// Convert the tuple representation into a future
-    static type from_tuple(value_type&& value);
+    static type from_tuple(scheduler * s, value_type&& value);
     /// Convert the tuple representation into a future
-    static type from_tuple(const value_type& value);
+    static type from_tuple(scheduler * s, const value_type& value);
 
     /// Makes an exceptional future of type \ref type.
     template <typename Arg>
-    static type make_exception_future(Arg&& arg);
+    static type make_exception_future(scheduler * s, Arg&& arg);
 };
 
 /// \cond internal
@@ -587,16 +593,16 @@ struct futurize<void> {
     using value_type = std::tuple<>;
 
     template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
+    static inline type apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
 
     template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
+    static inline type apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept;
 
-    static inline type from_tuple(value_type&& value);
-    static inline type from_tuple(const value_type& value);
+    static inline type from_tuple(scheduler * s, value_type&& value);
+    static inline type from_tuple(scheduler * s, const value_type& value);
 
     template <typename Arg>
-    static type make_exception_future(Arg&& arg);
+    static type make_exception_future(scheduler * s, Arg&& arg);
 };
 
 template <typename... Args>
@@ -605,16 +611,16 @@ struct futurize<future<Args...>> {
     using promise_type = promise<Args...>;
 
     template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
+    static inline type apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
 
     template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
+    static inline type apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept;
 
-    static inline type convert(Args&&... values) { return make_ready_future<Args...>(std::move(values)...); }
-    static inline type convert(type&& value) { return std::move(value); }
+    static inline type convert(scheduler * s, Args&&... values) { return make_ready_future<Args...>(std::move(values)...); }
+    static inline type convert(scheduler * s, type&& value) { return std::move(value); }
 
     template <typename Arg>
-    static type make_exception_future(Arg&& arg);
+    static type make_exception_future(scheduler * s, Arg&& arg);
 };
 /// \endcond
 
@@ -642,27 +648,28 @@ using futurize_t = typename futurize<T>::type;
 /// available.  Only one such continuation may be scheduled.
 template <typename... T>
 class future {
+    scheduler * const _scheduler;
     promise<T...>* _promise;
     future_state<T...> _local_state;  // valid if !_promise
     static constexpr bool copy_noexcept = future_state<T...>::copy_noexcept;
 private:
-    future(promise<T...>* pr) noexcept : _promise(pr) {
+    future(promise<T...>* pr) noexcept : _scheduler(pr->_scheduler), _promise(pr) {
         _promise->_future = this;
     }
     template <typename... A>
-    future(ready_future_marker, A&&... a) : _promise(nullptr) {
+    future(ready_future_marker, scheduler * s, A&&... a) : _scheduler(s), _promise(nullptr) {
         _local_state.set(std::forward<A>(a)...);
     }
     template <typename... A>
-    future(ready_future_from_tuple_marker, std::tuple<A...>&& data) : _promise(nullptr) {
+    future(ready_future_from_tuple_marker, scheduler * s, std::tuple<A...>&& data) : _scheduler(s), _promise(nullptr) {
         _local_state.set(std::move(data));
     }
-    future(exception_future_marker, std::exception_ptr ex) noexcept : _promise(nullptr) {
+    future(exception_future_marker, scheduler * s, std::exception_ptr ex) noexcept : _scheduler(s), _promise(nullptr) {
         _local_state.set_exception(std::move(ex));
     }
     [[gnu::always_inline]]
-    explicit future(future_state<T...>&& state) noexcept
-            : _promise(nullptr), _local_state(std::move(state)) {
+    explicit future(scheduler * s, future_state<T...>&& state) noexcept
+            : _scheduler(s), _promise(nullptr), _local_state(std::move(state)) {
     }
     [[gnu::always_inline]]
     future_state<T...>* state() noexcept {
@@ -671,7 +678,7 @@ private:
     template <typename Func>
     void schedule(Func&& func) {
         if (state()->available()) {
-            ::schedule(std::make_unique<continuation<Func, T...>>(std::move(func), std::move(*state())));
+            _scheduler->schedule(std::make_unique<continuation<Func, T...>>(std::move(func), std::move(*state())));
         } else {
             assert(_promise);
             _promise->schedule(std::move(func));
@@ -721,7 +728,7 @@ public:
     using promise_type = promise<T...>;
     /// \brief Moves the future into a new object.
     [[gnu::always_inline]]
-    future(future&& x) noexcept : _promise(x._promise) {
+    future(future&& x) noexcept : _scheduler(x._scheduler), _promise(x._promise) {
         if (!_promise) {
             _local_state = std::move(x._local_state);
         }
@@ -834,19 +841,19 @@ public:
         using futurator = futurize<std::result_of_t<Func(T&&...)>>;
         if (available() && !need_preempt()) {
             if (failed()) {
-                return futurator::make_exception_future(get_available_state().get_exception());
+                return futurator::make_exception_future(_scheduler, get_available_state().get_exception());
             } else {
-                return futurator::apply(std::forward<Func>(func), get_available_state().get_value());
+                return futurator::apply(_scheduler, std::forward<Func>(func), get_available_state().get_value());
             }
         }
-        typename futurator::promise_type pr;
+        typename futurator::promise_type pr(_scheduler);
         auto fut = pr.get_future();
         try {
-            schedule([pr = std::move(pr), func = std::forward<Func>(func)] (auto&& state) mutable {
+            schedule([pr = std::move(pr), func = std::forward<Func>(func), s=_scheduler] (auto&& state) mutable {
                 if (state.failed()) {
                     pr.set_exception(std::move(state).get_exception());
                 } else {
-                    futurator::apply(std::forward<Func>(func), std::move(state).get_value()).forward_to(std::move(pr));
+                    futurator::apply(s, std::forward<Func>(func), std::move(state).get_value()).forward_to(std::move(pr));
                 }
             });
         } catch (...) {
@@ -879,13 +886,13 @@ public:
     then_wrapped(Func&& func) noexcept {
         using futurator = futurize<std::result_of_t<Func(future)>>;
         if (available() && !need_preempt()) {
-            return futurator::apply(std::forward<Func>(func), future(get_available_state()));
+            return futurator::apply(_scheduler, std::forward<Func>(func), future(_scheduler, get_available_state()));
         }
-        typename futurator::promise_type pr;
+        typename futurator::promise_type pr(_scheduler);
         auto fut = pr.get_future();
         try {
-            schedule([pr = std::move(pr), func = std::forward<Func>(func)] (auto&& state) mutable {
-                futurator::apply(std::forward<Func>(func), future(std::move(state))).forward_to(std::move(pr));
+            schedule([pr = std::move(pr), func = std::forward<Func>(func), s=_scheduler] (auto&& state) mutable {
+                futurator::apply(s, std::forward<Func>(func), future(s, std::move(state))).forward_to(std::move(pr));
             });
         } catch (...) {
             // catch possible std::bad_alloc in schedule() above
@@ -1070,11 +1077,11 @@ public:
     template <typename... U>
     friend class promise;
     template <typename... U, typename... A>
-    friend future<U...> make_ready_future(A&&... value);
+    friend future<U...> make_ready_future(scheduler * s, A&&... value);
     template <typename... U>
-    friend future<U...> make_exception_future(std::exception_ptr ex) noexcept;
+    friend future<U...> make_exception_future(scheduler * s, std::exception_ptr ex) noexcept;
     template <typename... U, typename Exception>
-    friend future<U...> make_exception_future(Exception&& ex) noexcept;
+    friend future<U...> make_exception_future(scheduler * s, Exception&& ex) noexcept;
     /// \endcond
 };
 
@@ -1103,7 +1110,7 @@ inline
 void promise<T...>::make_ready() noexcept {
     if (_task) {
         _state = nullptr;
-        ::schedule(std::move(_task));
+        _scheduler->schedule(std::move(_task));
     }
 }
 
@@ -1130,14 +1137,14 @@ void promise<T...>::abandoned() noexcept {
 
 template <typename... T, typename... A>
 inline
-future<T...> make_ready_future(A&&... value) {
-    return future<T...>(ready_future_marker(), std::forward<A>(value)...);
+future<T...> make_ready_future(scheduler * s, A&&... value) {
+    return future<T...>(ready_future_marker(), s, std::forward<A>(value)...);
 }
 
 template <typename... T>
 inline
-future<T...> make_exception_future(std::exception_ptr ex) noexcept {
-    return future<T...>(exception_future_marker(), std::move(ex));
+future<T...> make_exception_future(scheduler * s, std::exception_ptr ex) noexcept {
+    return future<T...>(exception_future_marker(), s, std::move(ex));
 }
 
 /// \brief Creates a \ref future in an available, failed state.
@@ -1158,33 +1165,33 @@ future<T...> make_exception_future(Exception&& ex) noexcept {
 
 template<typename T>
 template<typename Func, typename... FuncArgs>
-typename futurize<T>::type futurize<T>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+typename futurize<T>::type futurize<T>::apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
     try {
         return convert(::apply(std::forward<Func>(func), std::move(args)));
     } catch (...) {
-        return make_exception_future(std::current_exception());
+        return make_exception_future(s, std::current_exception());
     }
 }
 
 template<typename T>
 template<typename Func, typename... FuncArgs>
-typename futurize<T>::type futurize<T>::apply(Func&& func, FuncArgs&&... args) noexcept {
+typename futurize<T>::type futurize<T>::apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept {
     try {
         return convert(func(std::forward<FuncArgs>(args)...));
     } catch (...) {
-        return make_exception_future(std::current_exception());
+        return make_exception_future(s, std::current_exception());
     }
 }
 
 template<typename Func, typename... FuncArgs>
 inline
 std::enable_if_t<!is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
-do_void_futurize_apply(Func&& func, FuncArgs&&... args) noexcept {
+do_void_futurize_apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept {
     try {
         func(std::forward<FuncArgs>(args)...);
-        return make_ready_future<>();
+        return make_ready_future<>(s);
     } catch (...) {
-        return make_exception_future(std::current_exception());
+        return make_exception_future(s, std::current_exception());
     }
 }
 
@@ -1202,53 +1209,53 @@ do_void_futurize_apply(Func&& func, FuncArgs&&... args) noexcept {
 template<typename Func, typename... FuncArgs>
 inline
 std::enable_if_t<!is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
-do_void_futurize_apply_tuple(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+do_void_futurize_apply_tuple(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
     try {
         ::apply(std::forward<Func>(func), std::move(args));
-        return make_ready_future<>();
+        return make_ready_future<>(s);
     } catch (...) {
-        return make_exception_future(std::current_exception());
+        return make_exception_future(s, std::current_exception());
     }
 }
 
 template<typename Func, typename... FuncArgs>
 inline
 std::enable_if_t<is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
-do_void_futurize_apply_tuple(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+do_void_futurize_apply_tuple(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
     try {
-        return ::apply(std::forward<Func>(func), std::move(args));
+        return ::apply(s, std::forward<Func>(func), std::move(args));
     } catch (...) {
-        return make_exception_future(std::current_exception());
+        return make_exception_future(s, std::current_exception());
     }
 }
 
 template<typename Func, typename... FuncArgs>
-typename futurize<void>::type futurize<void>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
-    return do_void_futurize_apply_tuple(std::forward<Func>(func), std::move(args));
+typename futurize<void>::type futurize<void>::apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+    return do_void_futurize_apply_tuple(s, std::forward<Func>(func), std::move(args));
 }
 
 template<typename Func, typename... FuncArgs>
-typename futurize<void>::type futurize<void>::apply(Func&& func, FuncArgs&&... args) noexcept {
+typename futurize<void>::type futurize<void>::apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept {
     return do_void_futurize_apply(std::forward<Func>(func), std::forward<FuncArgs>(args)...);
 }
 
 template<typename... Args>
 template<typename Func, typename... FuncArgs>
-typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
     try {
         return ::apply(std::forward<Func>(func), std::move(args));
     } catch (...) {
-        return make_exception_future(std::current_exception());
+        return make_exception_future(s, std::current_exception());
     }
 }
 
 template<typename... Args>
 template<typename Func, typename... FuncArgs>
-typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(Func&& func, FuncArgs&&... args) noexcept {
+typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept {
     try {
         return func(std::forward<FuncArgs>(args)...);
     } catch (...) {
-        return make_exception_future(std::current_exception());
+        return make_exception_future(s, std::current_exception());
     }
 }
 
@@ -1256,49 +1263,49 @@ template <typename T>
 template <typename Arg>
 inline
 future<T>
-futurize<T>::make_exception_future(Arg&& arg) {
-    return ::make_exception_future<T>(std::forward<Arg>(arg));
+futurize<T>::make_exception_future(scheduler * s, Arg&& arg) {
+    return ::make_exception_future<T>(s, std::forward<Arg>(arg));
 }
 
 template <typename... T>
 template <typename Arg>
 inline
 future<T...>
-futurize<future<T...>>::make_exception_future(Arg&& arg) {
-    return ::make_exception_future<T...>(std::forward<Arg>(arg));
+futurize<future<T...>>::make_exception_future(scheduler * s, Arg&& arg) {
+    return ::make_exception_future<T...>(s, std::forward<Arg>(arg));
 }
 
 template <typename Arg>
 inline
 future<>
-futurize<void>::make_exception_future(Arg&& arg) {
-    return ::make_exception_future<>(std::forward<Arg>(arg));
+futurize<void>::make_exception_future(scheduler * s, Arg&& arg) {
+    return ::make_exception_future<>(s, std::forward<Arg>(arg));
 }
 
 template <typename T>
 inline
 future<T>
-futurize<T>::from_tuple(std::tuple<T>&& value) {
-    return make_ready_future<T>(std::move(value));
+futurize<T>::from_tuple(scheduler * s, std::tuple<T>&& value) {
+    return make_ready_future<T>(s, std::move(value));
 }
 
 template <typename T>
 inline
 future<T>
-futurize<T>::from_tuple(const std::tuple<T>& value) {
-    return make_ready_future<T>(value);
+futurize<T>::from_tuple(scheduler * s, const std::tuple<T>& value) {
+    return make_ready_future<T>(s, value);
 }
 
 inline
 future<>
-futurize<void>::from_tuple(std::tuple<>&& value) {
-    return make_ready_future<>();
+futurize<void>::from_tuple(scheduler * s, std::tuple<>&& value) {
+    return make_ready_future<>(s);
 }
 
 inline
 future<>
-futurize<void>::from_tuple(const std::tuple<>& value) {
-    return make_ready_future<>();
+futurize<void>::from_tuple(scheduler * s, const std::tuple<>& value) {
+    return make_ready_future<>(s);
 }
 
 template<typename Func, typename... Args>

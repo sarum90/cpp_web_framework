@@ -24,22 +24,21 @@ build/root/native/gcloud/bin
 "
 
 export PATH="$(for x in $PATHS; do echo -n ${ROOT}/${x}:; done):$PATH"
-export CXX=clang++
-export CC=clang
+export CXX=em++
+export CC=emcc
 
 LD_DIRS="
-build/root/native/boost/lib
-build/root/native/mettle/lib
+build/root/ems/boost/lib
+build/root/ems/mettle/lib
 "
 
 LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}
 export LD_LIBRARY_PATH="$(for x in $LD_DIRS; do echo -n ${ROOT}/${x}:; done):$LD_LIBRARY_PATH"
 
-export BOOST_ROOT=${ROOT}/build/root/native/boost
+export BOOST_ROOT=${ROOT}/build/root/ems/boost
 
 INCLUDES="
-build/root/native/boost/include
-build/root/native/mettle/include
+build/root/ems/boost/include
 "
 INCLUDE_FLAGS=$(for x in $INCLUDES; do echo -n "-I${ROOT}/$x "; done)
 
@@ -50,9 +49,8 @@ export CCFLAGS="$COMMON_FLAGS"
 
 
 LIBDIRS="
-build/root/native/boost/lib/
-build/root/native/boost/bin/
-build/root/native/mettle/lib/
+build/root/ems/boost/lib/
+build/root/ems/boost/bin/
 "
 LIBDIR_FLAGS=$(for x in $LIBDIRS; do echo -n "-L${ROOT}/$x "; done)
 
@@ -68,3 +66,4 @@ echo LDFLAGS = $LDFLAGS
 echo "RUNNING:" "$@"
 
 "$@"
+

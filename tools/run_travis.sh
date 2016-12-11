@@ -8,4 +8,6 @@ set -e
 
 ./tools/get_deps.sh
 
+./build/root/native/emsdk/emsdk activate
+
 echo "DONE with setup_travis"
