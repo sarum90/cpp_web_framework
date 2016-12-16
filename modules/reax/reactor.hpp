@@ -81,4 +81,22 @@ namespace net {
 future<boost::asio::ip::tcp::resolver::iterator> resolve_tcp(
     reactor* r, const boost::asio::ip::tcp::resolver::endpoint_type& endpoint);
 
+future<boost::asio::ip::tcp::resolver::iterator> resolve_tcp(
+    reactor* r, const boost::asio::ip::tcp::resolver::query& endpoint);
+
+class ipv4_endpoint {
+  public:
+    ipv4_endpoint(const boost::asio::ip::tcp::endpoint& ep):
+      _address(ep.address().to_v4().to_ulong()), _port(ep.port()){}
+
+    operator boost::asio::ip::tcp::endpoint() const {
+      return boost::asio::ip::tcp::endpoint(
+          boost::asio::ip::address_v4(_address), _port);
+    }
+
+  private:
+    unsigned long _address;
+    unsigned short _port;
+};
+
 }

@@ -572,7 +572,7 @@ struct futurize {
     static inline type apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept;
 
     /// Convert a value or a future to a future
-    static inline type convert(scheduler * s, T&& value) { return make_ready_future<T>(std::move(value)); }
+    static inline type convert(scheduler * s, T&& value) { return make_ready_future<T>(s, std::move(value)); }
     static inline type convert(scheduler * s, type&& value) { return std::move(value); }
 
     /// Convert the tuple representation into a future
@@ -1167,7 +1167,7 @@ template<typename T>
 template<typename Func, typename... FuncArgs>
 typename futurize<T>::type futurize<T>::apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
     try {
-        return convert(::apply(std::forward<Func>(func), std::move(args)));
+        return convert(s, ::apply(std::forward<Func>(func), std::move(args)));
     } catch (...) {
         return make_exception_future(s, std::current_exception());
     }
