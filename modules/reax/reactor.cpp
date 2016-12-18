@@ -1,39 +1,11 @@
 
 #include "reactor.hpp"
 
-static reactor** current_reactor() {
-  static __thread reactor* r = nullptr;
-  return &r;
-}
-
-static reactor& engine() {
-	return **current_reactor();
-}
-
-static void set_reactor(reactor* val) {
-  *current_reactor() = val;
-}
-
-reactor_setter::reactor_setter(reactor* newval) : oldval(*current_reactor()){
-  set_reactor(newval);
-}
-
-reactor_setter::~reactor_setter() {
-  set_reactor(oldval);
-}
-
-void report_failed_future(std::exception_ptr eptr) {
-	try {
-			if (eptr) {
-					std::rethrow_exception(eptr);
-			}
-	} catch(const std::exception& e) {
-      std::cerr << "Exceptional future ignored: " <<  e.what() << std::endl;
-	}
+void report_failed_future(scheduler * s, std::exception_ptr eptr) {
+  s->report_failed_future(eptr);
 }
 
 __thread bool g_need_preempt;
-
 
 namespace net {
 
