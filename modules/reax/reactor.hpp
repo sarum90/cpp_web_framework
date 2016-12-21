@@ -151,6 +151,28 @@ future<> write(reactor * r, T* simple_writable, const mes::mestring& m) {
 
 namespace {
 
+template <class T, class U>
+future<> write(reactor * r, T* sw, U mci, U end) {
+  return reax::write<T>(r, sw, *mci).then([=]() mutable {
+    ++mci;
+    if (mci == end) {
+      return r->make_ready_future();
+    } else {
+      return write(r, sw, mci, end);
+    }
+  });
+}
+
+}
+
+template <class T>
+future<> write(reactor * r, T* simple_writable, const mes::mestring_cat& mc) {
+  auto& mcs = mc.mestrings();
+  return write(r, simple_writable, mcs.begin(), mcs.end());
+}
+
+namespace {
+
 template <class T>
 future<> readsomeline(reactor * r, std::string* s, T* simple_readable) {
   return do_with(std::array<char,1>{}, [s=s, r=r, sr=simple_readable](std::array<char, 1>& buff) {

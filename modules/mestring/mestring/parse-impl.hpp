@@ -6,65 +6,100 @@ struct parse_error: public std::runtime_error{
   using std::runtime_error::runtime_error;
 };
 
+inline constexpr mestring substr(const char * s, const char * e) {
+  return make_mestring(s, e-s);
+}
+
+inline mestring_cat substr(mestring_cat::iterator s, mestring_cat::iterator e) {
+  mestring_cat mc;
+
+  if (s.it_ == e.it_) {
+    mc += substr(s.iit_, e.iit_);
+    return mc;
+  }
+  auto i = s.it_;
+  mc += substr(s.iit_, i->end());
+  ++i;
+
+  while(i != e.it_ && i != e.end_) {
+    mc += *i;
+    ++i;
+  }
+
+  if (i != s.end_) {
+    mc += substr(e.it_->begin(), e.iit_);
+  }
+
+  return mc;
+}
+
+
+
+
 // TODO(marcus): This could probably be cleaner...
 namespace impl {
-  template <int n>
+
+  template <int n, bool b, class T>
   struct static_split {
     using return_type = decltype(
         std::tuple_cat(
-          std::declval<typename static_split<n-1>::return_type>(),
+          std::declval<typename static_split<n-1, b, T>::return_type>(),
           std::declval<std::tuple<mestring>>()
         )
     );
 
-    constexpr static return_type call(const mestring& m, char c) {
+    constexpr static return_type call(const T& m, mes::mestring c) {
       int ind = 0;
       auto i = m.begin();
-      for(; i != m.end() && *i != c; ind++, i++) { }
+      for(; i != m.end() && *i != c; ++i) { }
       if (i == m.end()) {
         throw parse_error("Not enough separators for static_split.");
       }
 
+      auto first = substr(m.begin(), i);
+      ++i;
+
       return std::tuple_cat(
-          std::make_tuple(make_mestring(m.begin(), ind)),
-          static_split<n-1>::call(make_mestring(&m[ind+1], m.size()-ind-1), c)
+          std::make_tuple(first),
+          static_split<n-1, b, T>::call(substr(i, m.end()), c)
       );
     }
   };
 
-  template <>
-  struct static_split<1> {
-    using return_type = std::tuple<mestring>;
+  template <bool b, class T>
+  struct static_split<1, b, T> {
+    using return_type = std::tuple<T>;
 
-    constexpr static return_type call(const mestring& m, char c) {
+    constexpr static return_type call(const T& m, mes::mestring c) {
       int n = 0;
       auto i = m.begin();
       for(; i != m.end() && *i != c; n++, i++);
-      if (i != m.end()) {
+      if (i != m.end() && !b) {
         throw parse_error("Too many separators for static_split.");
       }
       return std::make_tuple(m);
     }
   };
 
-  template <>
-  struct static_split<2> {
-    using return_type = std::tuple<mestring, mestring>;
+  template <bool b, class T>
+  struct static_split<2, b, T> {
+    using return_type = std::tuple<T, T>;
 
-    constexpr static return_type call(const mestring& m, char c) {
-      int n = 0;
+    constexpr static return_type call(const T& m, mes::mestring c) {
       auto i = m.begin();
-      for(; i != m.end() && *i != c; n++, i++);
+      for(; i != m.end() && *i != c; ++i);
       if (i == m.end()) {
         throw parse_error("Not enough separators for static_split.");
       }
+      auto first = substr(m.begin(), i);
       ++i;
-      for(; i != m.end() && *i != c; i++);
-      if (i != m.end()) {
+      auto second = substr(i, m.end());
+      for(; i != m.end() && *i != c; ++i);
+      if (i != m.end() && !b) {
         throw parse_error("Too many separators for static_split.");
       }
 
-      return std::make_tuple(make_mestring(m.begin(), n), make_mestring(&m[n+1], m.size()-n-1));
+      return std::make_tuple(first, second);
     }
   };
 

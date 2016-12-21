@@ -6,8 +6,10 @@ default: test
 
 .PHONY: all
 all:
-	$(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system'
+	#$(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system'
+	bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system'
 
 .PHONY: test
 test: all
-	$(WRAPPER) mettle --output=verbose --color=always ./test
+	#$(WRAPPER) mettle --show-terminal --output=verbose --color=always ./test
+	mettle --show-terminal --output=verbose --color=always ./test

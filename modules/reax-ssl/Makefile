@@ -6,8 +6,13 @@ INCLUDES := -I../reax/ -I../mestring/
 
 .PHONY: test
 test: all
-	$(WRAPPER) ./test
+
+.PHONY: test
+test: all
+	#$(WRAPPER) ./test
+	./test
 
 .PHONY: all
 all:
-	$(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system -lssl -lcrypto $(INCLUDES)'
+	#$(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system -lssl -lcrypto $(INCLUDES)'
+	$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system -lssl -lcrypto $(INCLUDES)

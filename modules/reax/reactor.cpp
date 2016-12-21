@@ -1,5 +1,6 @@
 
 #include "reactor.hpp"
+#include "net.hpp"
 
 void report_failed_future(scheduler * s, std::exception_ptr eptr) {
   s->report_failed_future(eptr);
@@ -46,6 +47,14 @@ future<boost::asio::ip::tcp::resolver::iterator> resolve_tcp(
       return (*h)(error, iter);
   });
   return std::move(retval);
+}
+
+future<net::ipv4_endpoint> resolve_tcp(
+    reactor* r, const mes::mestring& host, unsigned short port) {
+  boost::asio::ip::tcp::resolver::query query(host, "");
+  return resolve_tcp(r, query).then([r=r, port=port](auto ep) {
+    return net::ipv4_endpoint{ep->endpoint().address().to_v4().to_ulong(), port};
+  });
 }
 
 }

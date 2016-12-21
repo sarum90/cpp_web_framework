@@ -49,6 +49,9 @@ future<boost::asio::ip::tcp::resolver::iterator> resolve_tcp(
 
 class ipv4_endpoint;
 
+future<ipv4_endpoint> resolve_tcp(
+    reactor* r, const mes::mestring& host, unsigned short port);
+
 constexpr inline ipv4_endpoint parse_ipv4(const mes::mestring& s);
 constexpr inline unsigned long parse_addr(const mes::mestring& s);
 
@@ -88,7 +91,7 @@ class ipv4_endpoint {
     friend std::ostream& operator<<(std::ostream& o, const ipv4_endpoint& e);
 };
 
-std::ostream& operator<<(std::ostream& o, const ipv4_endpoint& e) {
+inline std::ostream& operator<<(std::ostream& o, const ipv4_endpoint& e) {
   return (o << e.p(0) << "."
             << e.p(1) << "."
             << e.p(2) << "."
@@ -241,7 +244,7 @@ class acceptor {
     friend future<acceptor> make_acceptor(reactor * r, const ipv4_endpoint& ep);
 };
 
-future<acceptor> make_acceptor(reactor * r, const ipv4_endpoint& ep) {
+inline future<acceptor> make_acceptor(reactor * r, const ipv4_endpoint& ep) {
 			auto acc = std::make_unique<boost::asio::ip::tcp::acceptor>(r->io_service_);
       auto endpoint = boost::asio::ip::tcp::endpoint(ep);
 			acc->open(endpoint.protocol());
@@ -251,7 +254,7 @@ future<acceptor> make_acceptor(reactor * r, const ipv4_endpoint& ep) {
       return r->make_ready_future<acceptor>(acceptor(std::move(acc), r));
 }
 
-future<socket> connect_to(reactor * r, const ipv4_endpoint& ep) {
+inline future<socket> connect_to(reactor * r, const ipv4_endpoint& ep) {
   socket s(r);
   boost::system::error_code ec;
   s.asio_socket()->connect(ep, ec);
