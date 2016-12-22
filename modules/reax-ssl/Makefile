@@ -10,7 +10,7 @@ test: all
 .PHONY: test
 test: all
 	#$(WRAPPER) ./test
-	./test
+	valgrind ./test
 
 .PHONY: all
 all:

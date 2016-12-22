@@ -18,10 +18,12 @@ decltype(auto) lstrip(T t) {
 }
 
 template<class T>
-constexpr int parse_int(const T& me) {
+constexpr int parse_int(T me) {
   int retval = 0;
-  bool neg = false;
   auto c = me.begin();
+  if (c == me.end()) {
+    throw parse_error("Error parsing int.");
+  }
 
   constexpr int mx = std::numeric_limits<int>::max();
   constexpr int mxd10 = mx / 10;
@@ -29,6 +31,9 @@ constexpr int parse_int(const T& me) {
   constexpr int mnd10 = mn / 10;
   if (*c == '-') {
     ++c;
+    if (c == me.end()) {
+      throw parse_error("Error parsing int.");
+    }
     for (;c != me.end(); ++c) {
       int val = *c - '0';
       if (val < 0 || val > 9) {

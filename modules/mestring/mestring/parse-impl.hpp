@@ -50,14 +50,15 @@ namespace impl {
 
     constexpr static return_type call(const T& m, mes::mestring c) {
       int ind = 0;
-      auto i = m.begin();
-      for(; i != m.end() && *i != c; ++i) { }
+      auto i = find_it(m, c);
       if (i == m.end()) {
         throw parse_error("Not enough separators for static_split.");
       }
 
       auto first = substr(m.begin(), i);
-      ++i;
+      for(int iii = 0; iii < c.size(); iii++) {
+        ++i;
+      }
 
       return std::tuple_cat(
           std::make_tuple(first),
@@ -71,9 +72,7 @@ namespace impl {
     using return_type = std::tuple<T>;
 
     constexpr static return_type call(const T& m, mes::mestring c) {
-      int n = 0;
-      auto i = m.begin();
-      for(; i != m.end() && *i != c; n++, i++);
+      auto i = find_it(m, c);
       if (i != m.end() && !b) {
         throw parse_error("Too many separators for static_split.");
       }
@@ -85,17 +84,18 @@ namespace impl {
   struct static_split<2, b, T> {
     using return_type = std::tuple<T, T>;
 
-    constexpr static return_type call(const T& m, mes::mestring c) {
-      auto i = m.begin();
-      for(; i != m.end() && *i != c; ++i);
+    constexpr static return_type call(const T& m, const mes::mestring& c) {
+      auto i = find_it(m, c);
       if (i == m.end()) {
         throw parse_error("Not enough separators for static_split.");
       }
       auto first = substr(m.begin(), i);
-      ++i;
+      for(int iii = 0; iii < c.size(); iii++) {
+        ++i;
+      }
       auto second = substr(i, m.end());
-      for(; i != m.end() && *i != c; ++i);
-      if (i != m.end() && !b) {
+      auto si = find_it(second, c);
+      if (si != m.end() && !b) {
         throw parse_error("Too many separators for static_split.");
       }
 

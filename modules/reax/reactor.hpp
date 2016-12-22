@@ -140,7 +140,7 @@ concluding_ptr<T> make_concluding(Args&&... args)
 
 
 template <class T>
-future<> write(reactor * r, T* simple_writable, const mes::mestring& m) {
+future<> write(reactor * r, T* simple_writable, mes::mestring m) {
   if (m.size() == 0) {
     return r->make_ready_future();
   }
@@ -166,9 +166,11 @@ future<> write(reactor * r, T* sw, U mci, U end) {
 }
 
 template <class T>
-future<> write(reactor * r, T* simple_writable, const mes::mestring_cat& mc) {
-  auto& mcs = mc.mestrings();
-  return write(r, simple_writable, mcs.begin(), mcs.end());
+future<> write(reactor * r, T* simple_writable, mes::mestring_cat mc) {
+  return do_with(std::move(mc), [r=r, sw=simple_writable](auto& mc) {
+      auto& mcs = mc.mestrings();
+      return write(r, sw, mcs.begin(), mcs.end());
+  });
 }
 
 namespace {

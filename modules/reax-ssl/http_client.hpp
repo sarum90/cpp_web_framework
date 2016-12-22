@@ -7,17 +7,17 @@
 namespace http {
 
 struct response {
-  mes::mestring_cat protocol;
-  mes::mestring_cat version;
+  std::string protocol;
+  std::string version;
   int status_code;
-  mes::mestring_cat status;
-  std::vector<std::pair<mes::mestring_cat, mes::mestring_cat>> headers;
-  mes::mestring_cat content;
+  std::string status;
+  std::vector<std::pair<std::string, std::string>> headers;
+  std::string content;
 
-  mes::mestring_cat get_header(mes::mestring header, mes::mestring def) {
-    for (auto h : headers) {
-      if (h.first == header) {
-        return h.second;
+  mes::mestring get_header(mes::mestring header, mes::mestring def) const {
+    for (const auto& h : headers) {
+      if (header == h.first) {
+        return mes::make_mestring(h.second.c_str(), h.second.size());
       }
     }
     return def;
@@ -80,7 +80,7 @@ public:
   }
 
   future<mes::mestring_cat> read_up_to(mes::mestring str) {
-    return reader_->read_some().then([s=str, p=this](const mes::mestring& str) {
+    return reader_->read_some().then([s=str, p=this](mes::mestring str) {
         p->current_ += str;
         int idx = mes::find_index(p->current_, s) + s.size();
         if (idx < s.size()) {
@@ -110,7 +110,7 @@ class client {
 public:
   client(reactor * r): r_(r) {}
 
-  future<response> get(const mes::mestring& url) {
+  future<response> get(mes::mestring url) {
     client* c = this;
     auto p_hpa = mes::static_split_first<2>(url, "://");
     auto hpa = std::move(std::get<1>(p_hpa));
@@ -145,15 +145,15 @@ public:
               }).then([&p=p, res=res](auto m) {
                 res->version = std::move(m);
                 return p.read_up_to(" ");
-              }).then([&p=p, res=res](auto m) {
+              }).then([&p=p, res=res](mes::mestring_cat m) {
                 res->status_code = mes::parse_int(std::move(m));
                 return p.read_up_to("\r\n");
               }).then([&p=p, r=r, res=res](auto m) mutable {
                 res->status = std::move(m);
                 return client::read_headers(&p, r, res);
               }).then([&p=p, res=res]() {
-                int len = mes::parse_int(res->get_header("Content-Length", "-1"));
-                std::cout << len << std::endl;
+                auto m = res->get_header("Content-Length", "-1");
+                int len = mes::parse_int(m);
                 return p.read_n(len);
               }).then([res=res](auto m) {
                 res->content = std::move(m);
@@ -174,8 +174,8 @@ private:
         return r->make_ready_future<>();
       } else {
         auto k_v = mes::static_split_first<2>(m, ':');
-        auto k = std::move(std::get<0>(k_v));
-        auto v = mes::lstrip(std::move(std::get<1>(k_v)));
+        std::string k = std::move(std::get<0>(k_v));
+        std::string v = mes::lstrip(std::move(std::get<1>(k_v)));
         res->headers.push_back(std::make_pair(std::move(k), std::move(v)));
         return read_headers(p, r, res);
       }
@@ -186,7 +186,7 @@ private:
 };
 
 
-decltype(auto) get(reactor * r, const mes::mestring& url) {
+decltype(auto) get(reactor * r, mes::mestring url) {
   return do_with(client{r}, [url=url](client & c) {
     return c.get(url);
   });
