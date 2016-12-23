@@ -113,21 +113,35 @@ public:
   future<response> get(mes::mestring url) {
     client* c = this;
     auto p_hpa = mes::static_split_first<2>(url, "://");
+    auto proto = std::get<0>(p_hpa);
     auto hpa = std::move(std::get<1>(p_hpa));
     auto it = mes::find_it(hpa, "/");
     auto path = mes::substr(it, hpa.end());
     auto hp = mes::substr(hpa.begin(), it);
-    int port = 80;
+    int port = 0;
+    if (proto == "http") {
+      port = 80;
+    } else if (proto == "https") {
+      port = 443;
+    } else {
+      throw std::runtime_error("Unknown protocol");
+    }
     auto col = mes::find_it(hp, ":");
     auto host = mes::substr(hp.begin(), col);
     if (col != hp.end()) {
       ++col;
       port = mes::parse_int(mes::substr(col, hp.end()));
     }
-    return net::resolve_tcp(r_, host, port).then([t=c, path=path](auto ep) mutable {
-      return net::connect_to(t->r_, ep);
-    }).then([r=r_, path=path](auto socket) {
-      auto skt = std::make_unique<net::socket>(std::move(socket));
+    return net::resolve_tcp(r_, host, port).then([t=c, path=path, proto=proto, host=host](auto ep) mutable {
+      if (proto == "http") {
+        return net::connect_to(t->r_, ep).then([](auto s) -> std::unique_ptr<net::readwritable> {
+          return std::make_unique<decltype(s)>(std::move(s));
+        });
+      }
+      return net::connect_default_ssl_to(t->r_, ep, host).then([](auto s) -> std::unique_ptr<net::readwritable> {
+        return std::make_unique<decltype(s)>(std::move(s));
+      });
+    }).then([r=r_, path=path](std::unique_ptr<net::readwritable> skt) {
       auto br = make_buffered_reader(r, skt.get());
       return do_with(std::move(skt), std::move(br), response{}, [r=r, path=path](auto& skt, auto& reader, auto& res) mutable {
         auto* s = skt.get();

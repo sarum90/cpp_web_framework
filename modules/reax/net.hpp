@@ -4,6 +4,7 @@
 #include "mestring/parse.hpp"
 #include "future/future.hh"
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include "reactor.hpp"
 
 #include <cassert>
@@ -119,25 +120,62 @@ constexpr inline ipv4_endpoint parse_ipv4(const mes::mestring& s) {
   return ipv4_endpoint{addr, p};
 }
 
-class socket {
+namespace {
+
+template<class T>
+std::unique_ptr<T> make_socket(reactor * r) {
+  return std::make_unique<T>(r->io_service_);
+}
+
+template<>
+std::unique_ptr<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>
+make_socket<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> (reactor * r) {
+  boost::asio::ssl::context ctx(boost::asio::ssl::context::tlsv1_client);
+  ctx.set_default_verify_paths();
+  return std::make_unique<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>(
+      r->io_service_, ctx);
+}
+
+}
+
+class writable {
+public:
+    virtual ~writable(){}
+    virtual future<std::size_t> write(const char * c, std::size_t size) = 0;
+};
+
+class readable {
+public:
+    virtual ~readable(){}
+    virtual future<std::size_t> read(char * c, std::size_t size) = 0;
+};
+
+class readwritable : public readable, public writable {
+public:
+  virtual ~readwritable(){}
+};
+
+template <class T>
+class basic_socket : public readwritable {
   public:
-    socket(reactor * r): r_(r), asio_socket_(make_socket(r)){}
+    basic_socket(reactor * r): r_(r), asio_socket_(make_socket<T>(r)){}
+    ~basic_socket(){}
 
-    socket(const socket& s) = delete;
-    socket& operator=(const socket& s) = delete;
+    basic_socket(const basic_socket& s) = delete;
+    basic_socket& operator=(const basic_socket& s) = delete;
 
-    socket(socket&& s) noexcept {
+    basic_socket(basic_socket&& s) noexcept {
       *this = std::move(s);
     }
-    socket& operator=(socket&& s) noexcept {
+    basic_socket& operator=(basic_socket&& s) noexcept {
       r_ = s.r_; 
       asio_socket_ = std::move(s.asio_socket_);
-      s.asio_socket_ = make_socket(r_);
+      s.asio_socket_ = make_socket<T>(r_);
       return *this;
     }
 
     // Retry writing until the whole string is written.
-    future<std::size_t> write(const char * c, std::size_t size) {
+    future<std::size_t> write(const char * c, std::size_t size) override final {
       auto ret_promise = r_->make_promise<std::size_t>();
       auto ret_fut = ret_promise.get_future();
 
@@ -158,7 +196,7 @@ class socket {
       return ret_fut;
     }
 
-    future<std::size_t> read(char * c, std::size_t size) {
+    future<std::size_t> read(char * c, std::size_t size) override final {
       auto ret_promise = r_->make_promise<std::size_t>();
       auto ret_fut = ret_promise.get_future();
 
@@ -181,20 +219,22 @@ class socket {
 
   private:
 
-    static std::unique_ptr<boost::asio::ip::tcp::socket> make_socket(reactor * r) {
-      return std::make_unique<boost::asio::ip::tcp::socket>(r->io_service_);
-    }
-
     reactor * r_;
-    std::unique_ptr<boost::asio::ip::tcp::socket> asio_socket_;
+    std::unique_ptr<T> asio_socket_;
 
-    boost::asio::ip::tcp::socket* asio_socket() {
+    T* asio_socket() {
       return asio_socket_.get();
     }
 
     friend class acceptor;
-    friend future<socket> connect_to(reactor * r, const ipv4_endpoint& mes);
+
+    friend future<basic_socket<boost::asio::ip::tcp::socket>> connect_to(reactor * r, const ipv4_endpoint& mes);
+
+    friend future<basic_socket<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>> connect_default_ssl_to(reactor * r, const ipv4_endpoint& mes, mes::mestring hostname);
 };
+
+typedef basic_socket<boost::asio::ip::tcp::socket> socket;
+typedef basic_socket<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>> ssl_socket;
 
 class acceptor {
   public:
@@ -254,14 +294,92 @@ inline future<acceptor> make_acceptor(reactor * r, const ipv4_endpoint& ep) {
       return r->make_ready_future<acceptor>(acceptor(std::move(acc), r));
 }
 
+namespace {
+
+template <class T>
+inline future<> asio_connect(reactor * r, T* asio_socket, const ipv4_endpoint& ep)  {
+  auto retprom = r->make_promise<>();
+  auto ret = retprom.get_future();
+
+  auto handler = [p=std::move(retprom)](const boost::system::error_code& ec) mutable {
+    if (ec) {
+      p.set_exception(ec);
+    } else {
+      p.set_value();
+    }
+  };
+
+  auto h = std::make_shared<decltype(handler)>(std::move(handler));
+
+  asio_socket->async_connect(ep, [h=h](const auto& ec) {
+      return (*h)(ec);
+  });
+
+  return std::move(ret);
+}
+
+template <class T>
+inline future<> asio_handshake(reactor * r, T* asio_ssl_socket)  {
+  auto retprom = r->make_promise<>();
+  auto ret = retprom.get_future();
+
+  auto handler = [p=std::move(retprom)](const boost::system::error_code& ec) mutable {
+    if (ec) {
+      p.set_exception(ec);
+    } else {
+      p.set_value();
+    }
+  };
+
+  auto h = std::make_shared<decltype(handler)>(std::move(handler));
+
+  asio_ssl_socket->async_handshake(boost::asio::ssl::stream_base::client, [h=h](const auto& ec) {
+      return (*h)(ec);
+  });
+
+  return std::move(ret);
+}
+
+}
+
 inline future<socket> connect_to(reactor * r, const ipv4_endpoint& ep) {
-  socket s(r);
-  boost::system::error_code ec;
-  s.asio_socket()->connect(ep, ec);
-  if (ec) {
-    return r->make_exception_future<socket>(std::make_exception_ptr(ec));
-  }
-  return r->make_ready_future<socket>(std::move(s));
+  return do_with(std::make_unique<socket>(r), [r=r, &ep=ep](auto& s) {
+      return asio_connect(r, s->asio_socket(), ep).then([&s=s]() {
+          return std::move(*s);
+      });
+  });
+}
+
+inline future<ssl_socket> connect_default_ssl_to(
+    reactor * r, const ipv4_endpoint& ep, mes::mestring hostname)
+{
+    auto s = std::make_unique<ssl_socket>(r);
+    boost::asio::ssl::context ctx(boost::asio::ssl::context::tlsv1_client);
+    auto as = s->asio_socket();
+    as->set_verify_mode(boost::asio::ssl::verify_peer);
+
+    // TODO: ssl verification.
+
+    as->set_verify_callback([hostname=hostname](
+      bool preverified, boost::asio::ssl::verify_context& ctx
+          ) {
+      char subject_name[256];
+      X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+      X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
+      std::cout << "Verifying " << subject_name << " vs " << hostname << " <" << preverified << "\n";
+
+      return preverified;
+    });
+
+    return do_with(std::move(s), [r=r, &ep=ep](auto& s) {
+        auto* as = s->asio_socket();
+        auto* sp = s.get();
+        return asio_connect(r, &as->lowest_layer(), ep).then([r=r, as=as]() {
+          return asio_handshake(r, as);
+        }).then([sp=sp]() {
+          return std::move(*sp);
+        });
+    });
 }
 
 }
