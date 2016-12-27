@@ -100,6 +100,13 @@ struct mestring {
   template <int N>
   constexpr mestring(const char (&c)[N]): str_(&c[0]), n_(getlen(&c[0], N)) { }
 
+  constexpr mestring(mestring&& other) = default;
+  constexpr mestring& operator=(mestring&& other) = default;
+
+  constexpr mestring(const mestring& other) = default;
+  constexpr mestring& operator=(const mestring& other) = default;
+
+
 private:
 
   static constexpr int getlen(const char * c, int len) {
@@ -120,7 +127,7 @@ private:
   }
 
   const char * str_;
-  const int n_;
+  int n_;
 
   friend std::ostream &operator<<(std::ostream &out, const mestring &mes);
   friend std::string to_printable(const mestring &mes);
@@ -221,6 +228,15 @@ public:
   mestring_cat& operator+=(const mestring& str) {
     if (str.size() > 0) {
       strs_.push_back(str);
+    }
+    return (*this);
+  }
+
+  mestring_cat& operator+=(const mestring_cat& s_c) {
+    for (auto& str: s_c.strs_) {
+      if (str.size() > 0) {
+        strs_.push_back(str);
+      }
     }
     return (*this);
   }
