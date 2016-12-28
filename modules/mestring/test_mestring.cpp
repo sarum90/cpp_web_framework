@@ -39,6 +39,10 @@ suite<> mestring_basic("mestring", [](auto &_) {
     static_assert(test_str == str, "");
   });
 
+  _.test("Empty string", []() {
+      expect(mestring(""), equal_to(std::string{}));
+  });
+
   _.test("Equality with self.", []() {
     constexpr auto str = "Test_string";
     constexpr auto str2 = "Test_string";

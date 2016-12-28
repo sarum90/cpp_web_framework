@@ -10,7 +10,8 @@ template <class T>
 class base64_iterator {
 public:
 
-  constexpr base64_iterator(const T& it, const T& end): iterator_(it), end_iterator_(end){}
+  constexpr base64_iterator(const T& it, const T& end):
+    iterator_(it), end_iterator_(end) {}
 
   char operator*() const {
     return key[get_bits(6)];
@@ -90,6 +91,9 @@ public:
   base64_encoded(mes::mestring_cat str): str_(str) {}
 
   iterator begin() const {
+    if (str_.size() == 0) {
+      return end();
+    }
     return make_base64_iterator(str_.begin(), str_.end());
   }
 
@@ -125,6 +129,9 @@ public:
   }
 
   int size() const {
+    if (str_.size() == 0) {
+      return 0;
+    }
     auto n = 1 + (str_.size() * 8 - 1) / 6;
     auto r = (str_.size() * 8) % 6;
     if (r == 0) {

@@ -22,7 +22,12 @@ suite<> base64_basic("base64", [](auto &_) {
   });
 
   _.test("Size of the string", []() {
-    for (auto txt : std::vector<mes::mestring>{"F", "FF", "FFF", "FFFF", "FFFFF"}) {
+    auto be = base64_encode("");
+    expect(be, equal_to(""));
+    expect(be.size(), equal_to(0));
+
+    for (auto txt : std::vector<mes::mestring>{
+        "F", "FF", "FFF", "FFFF", "FFFFF", "FFFFFF", "FFFFFFF"}) {
       auto be = base64_encode(txt);
       expect(be.size(), equal_to(std::string(be).size()));
     }
