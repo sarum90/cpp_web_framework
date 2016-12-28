@@ -41,7 +41,7 @@ public:
           p->reader_->replace_bytes(str.size()-new_ms.size());
           mes::mestring_cat resp = std::move(p->current_);
           p->current_.reset();
-          return p->r_->make_ready_future(std::move(resp));
+          return p->r_->template make_ready_future<mes::mestring_cat>(std::move(resp));
         }
     });
   }
@@ -58,7 +58,7 @@ public:
           p->reader_->replace_bytes(str.size()-new_ms.size());
           mes::mestring_cat resp = std::move(p->current_);
           p->current_.reset();
-          return p->r_->make_ready_future(std::move(resp));
+          return p->r_->template make_ready_future<mes::mestring_cat>(std::move(resp));
         }
     });
   }
@@ -74,7 +74,7 @@ public:
           auto mc = mes::mestring_cat::truncated(std::move(p->current_), -extra);
           p->current_.reset();
           p->reader_->replace_bytes(extra);
-          return p->r_->make_ready_future(std::move(mc));
+          return p->r_->template make_ready_future<mes::mestring_cat>(std::move(mc));
         }
     });
   }
@@ -90,7 +90,7 @@ public:
           auto mc = mes::mestring_cat::truncated(std::move(p->current_), -(extra + s.size()));
           p->current_.reset();
           p->reader_->replace_bytes(extra);
-          return p->r_->make_ready_future(std::move(mc));
+          return p->r_->template make_ready_future<mes::mestring_cat>(std::move(mc));
         }
     });
   }
@@ -113,12 +113,11 @@ public:
   future<response> request_over_socket(
       mes::mestring_cat host,
       mes::mestring_cat path,
-      std::unique_ptr<net::readwritable> skt)
+      net::readwritable* skt)
   {
     auto* r = r_;
-    auto br = make_buffered_reader(r, skt.get());
-    return do_with(std::move(skt), std::move(br), response{}, [r=r, path=path, host=host](auto& skt, auto& reader, auto& res) mutable {
-      auto* s = skt.get();
+    auto br = make_buffered_reader(r, skt);
+    return do_with(std::move(br), response{}, [s=skt, r=r, path=path, host=host](auto& reader, auto& res) mutable {
       auto* rdr = &reader;
       mes::mestring_cat mc;
       mc += "GET ";
@@ -189,7 +188,9 @@ public:
         return std::make_unique<decltype(s)>(std::move(s));
       });
     }).then([me=this, path=path, host=host](std::unique_ptr<net::readwritable> skt) {
-      return me->request_over_socket(host, path, std::move(skt));
+      return do_with(std::move(skt), [me=me, host=host, path=path](auto& s) {
+        return me->request_over_socket(host, path, s.get());
+      });
     });
   }
 

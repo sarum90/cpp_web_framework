@@ -151,6 +151,11 @@ public:
   mestring_cat(mestring_cat&&) = default;
   mestring_cat& operator=(mestring_cat&&) = default;
 
+  template <int N>
+  constexpr mestring_cat(const char (&c)[N]){
+    (*this) += mestring(c);
+  }
+
   class iterator {
   public:
     iterator(
@@ -223,6 +228,11 @@ public:
       ret += std::string(s);
     }
     return ret;
+  }
+
+  template <int N>
+  mestring_cat& operator+=(const char (&c)[N]){
+    return (*this) += mestring(c);
   }
 
   mestring_cat& operator+=(const mestring& str) {

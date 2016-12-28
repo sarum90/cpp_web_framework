@@ -17,9 +17,9 @@ class reactor : public scheduler {
       return promise<T...>(this);
     }
 
-    template <class... T>
-    future<T...> make_ready_future(T&& ... args) {
-      return ::make_ready_future<T...>(this, std::forward<T>(args)...);
+    template <class... T, class... A>
+    future<T...> make_ready_future(A&& ... args) {
+      return ::make_ready_future<T...>(this, std::forward<A>(args)...);
     }
 
     template <class... T>
