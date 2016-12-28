@@ -26,8 +26,6 @@ future<boost::asio::ip::tcp::resolver::iterator> resolve_tcp(
   return std::move(retval);
 }
 
-    //boost::asio::ip::tcp::resolver::query query(argv[1], argv[2]);
-
 future<boost::asio::ip::tcp::resolver::iterator> resolve_tcp(
     reactor* r, const boost::asio::ip::tcp::resolver::query& query) {
   auto ret_promise = r->make_promise<boost::asio::ip::tcp::resolver::iterator>();

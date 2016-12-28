@@ -46,13 +46,6 @@ class reactor : public scheduler {
 
     void report_failed_future(std::exception_ptr eptr) final override {
       _exception_queue.push_back(eptr);
-      //try {
-      //    if (eptr) {
-      //        std::rethrow_exception(eptr);
-      //    }
-      //} catch(const std::exception& e) {
-      //    std::cerr << "Excdafseptional future ignored: " <<  e.what() << std::endl;
-      //}
     }
 
   private:

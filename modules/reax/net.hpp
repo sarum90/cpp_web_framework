@@ -358,9 +358,6 @@ inline future<ssl_socket> connect_default_ssl_to(
     auto as = s->asio_socket();
     as->set_verify_mode(boost::asio::ssl::verify_peer);
 
-    // TODO: real ssl verification (verify the last one is the correct host).
-    // See how ssl recommends doing this.
-
     as->set_verify_callback(boost::asio::ssl::rfc2818_verification(std::string(hostname)));
 
     return do_with(std::move(s), [r=r, &ep=ep](auto& s) {
