@@ -8,6 +8,7 @@ namespace mes {
 struct mestring;
 
 constexpr mestring make_mestring(const char* c, int n);
+constexpr mestring make_mestring(const char* c);
 
 struct mestring {
 
@@ -251,7 +252,7 @@ public:
     return (*this);
   }
 
-  bool operator==(const mestring& m) {
+  bool operator==(const mestring& m) const {
     if (size() != m.size()) {
       return false;
     }
@@ -265,6 +266,10 @@ public:
       ++ii;
     }
     return true;
+  }
+
+  bool operator==(const char * c) const {
+    return (*this) == make_mestring(c);
   }
 
   const char& operator[](int n) {
