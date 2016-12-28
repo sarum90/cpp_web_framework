@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "reactor.hpp"
+#include "net.hpp"
 
 #include "future/do_with.hh"
 

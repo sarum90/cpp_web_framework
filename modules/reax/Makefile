@@ -8,7 +8,7 @@ default: test
 
 .PHONY: all
 all:
-	$(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system -I../mestring'
+	$(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} $${LDFLAGS} $(SRCS) -o test -lmettle -pthread -lboost_system -lssl -lcrypto -I../mestring'
 
 .PHONY: test
 test: all
