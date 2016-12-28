@@ -8,10 +8,22 @@
 
 namespace mes {
 
-constexpr int parse_int(const mestring& me) {
+template<class T>
+decltype(auto) lstrip(T t) {
+  auto i = t.begin();
+  while ((*i == ' ' || *i == '\t') && i != t.end()) {
+    ++i;
+  }
+  return substr(i, t.end());
+}
+
+template<class T>
+constexpr int parse_int(T me) {
   int retval = 0;
-  bool neg = false;
   auto c = me.begin();
+  if (c == me.end()) {
+    throw parse_error("Error parsing int.");
+  }
 
   constexpr int mx = std::numeric_limits<int>::max();
   constexpr int mxd10 = mx / 10;
@@ -19,6 +31,9 @@ constexpr int parse_int(const mestring& me) {
   constexpr int mnd10 = mn / 10;
   if (*c == '-') {
     ++c;
+    if (c == me.end()) {
+      throw parse_error("Error parsing int.");
+    }
     for (;c != me.end(); ++c) {
       int val = *c - '0';
       if (val < 0 || val > 9) {
@@ -53,9 +68,26 @@ constexpr int parse_int(const mestring& me) {
   }
 }
 
-template <int n>
-constexpr typename impl::static_split<n>::return_type static_split(const mestring& m, char c) {
-  return impl::static_split<n>::call(m, c);
+template <int n, class T>
+constexpr typename impl::static_split<n, false, T>::return_type static_split(const T& m, char c) {
+  return impl::static_split<n, false, T>::call(m, mes::make_mestring(&c, 1));
+}
+
+template <int n, class T>
+constexpr typename impl::static_split<n, false, T>::return_type static_split(
+    const T& m, const mes::mestring& c) {
+  return impl::static_split<n, false, T>::call(m, c);
+}
+
+template <int n, class T>
+constexpr typename impl::static_split<n, true, T>::return_type static_split_first(const T& m, char c) {
+  return impl::static_split<n, true, T>::call(m, mes::make_mestring(&c, 1));
+}
+
+template <int n, class T>
+constexpr typename impl::static_split<n, true, T>::return_type static_split_first(
+    const T& m, const mes::mestring& c) {
+  return impl::static_split<n, true, T>::call(m, c);
 }
 
 } // namespace mes

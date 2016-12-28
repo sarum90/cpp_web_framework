@@ -45,8 +45,6 @@ auto setup_server(reactor* r) {
 }
 
 int main(int argc, char ** argv) {
-  reactor r;
-  reactor_setter rs(&r);
-  setup_server(&r);
-  r.run();
+  executing_reactor r;
+  setup_server(&r.r);
 }

@@ -23,3 +23,10 @@ deps:
 .PHONY: clean
 clean:
 	cd third_party && $(MAKE) clean
+
+.PHONY: test
+test:
+	$(MAKE) -C modules/mestring/ test
+	$(MAKE) -C modules/webserver/ test
+	$(MAKE) -C modules/reax/ test
+	$(MAKE) -C modules/reax-ssl/ test

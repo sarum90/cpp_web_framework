@@ -7,6 +7,13 @@ std::ostream &operator<<(std::ostream &out, const mestring &mes) {
   return out;
 }
 
+std::ostream &operator<<(std::ostream &out, const mestring_cat &mes) {
+  for (auto& ms: mes.strs_) {
+    out << ms;
+  }
+  return out;
+}
+
 std::string to_printable(const mestring &mes) {
   return "\"" + std::string(mes.str_, mes.n_) + "\"";
 }

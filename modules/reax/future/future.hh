@@ -37,6 +37,7 @@
 class scheduler {
   public:
     virtual void schedule(std::unique_ptr<task> t) = 0;
+    virtual void report_failed_future(std::exception_ptr eptr) = 0;
 };
 
 
@@ -100,7 +101,7 @@ future<T...> make_exception_future(scheduler * s, std::exception_ptr value) noex
 /// \cond internal
 void engine_exit(std::exception_ptr eptr = {});
 
-void report_failed_future(std::exception_ptr ex);
+void report_failed_future(scheduler * s, std::exception_ptr ex);
 /// \endcond
 
 //
@@ -572,7 +573,7 @@ struct futurize {
     static inline type apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept;
 
     /// Convert a value or a future to a future
-    static inline type convert(scheduler * s, T&& value) { return make_ready_future<T>(std::move(value)); }
+    static inline type convert(scheduler * s, T&& value) { return make_ready_future<T>(s, std::move(value)); }
     static inline type convert(scheduler * s, type&& value) { return std::move(value); }
 
     /// Convert the tuple representation into a future
@@ -616,7 +617,7 @@ struct futurize<future<Args...>> {
     template<typename Func, typename... FuncArgs>
     static inline type apply(scheduler * s, Func&& func, FuncArgs&&... args) noexcept;
 
-    static inline type convert(scheduler * s, Args&&... values) { return make_ready_future<Args...>(std::move(values)...); }
+    static inline type convert(scheduler * s, Args&&... values) { return make_ready_future<Args...>(s, std::move(values)...); }
     static inline type convert(scheduler * s, type&& value) { return std::move(value); }
 
     template <typename Arg>
@@ -752,7 +753,7 @@ public:
             _promise->_future = nullptr;
         }
         if (failed()) {
-            report_failed_future(state()->get_exception());
+            report_failed_future(_scheduler, state()->get_exception());
         }
     }
     /// \brief gets the value returned by the computation
@@ -1131,7 +1132,7 @@ void promise<T...>::abandoned() noexcept {
         _future->_local_state = std::move(*_state);
         _future->_promise = nullptr;
     } else if (_state && _state->failed()) {
-        report_failed_future(_state->get_exception());
+        report_failed_future(_scheduler, _state->get_exception());
     }
 }
 
@@ -1167,7 +1168,7 @@ template<typename T>
 template<typename Func, typename... FuncArgs>
 typename futurize<T>::type futurize<T>::apply(scheduler * s, Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
     try {
-        return convert(::apply(std::forward<Func>(func), std::move(args)));
+        return convert(s, ::apply(std::forward<Func>(func), std::move(args)));
     } catch (...) {
         return make_exception_future(s, std::current_exception());
     }
