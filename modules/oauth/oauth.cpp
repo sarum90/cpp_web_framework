@@ -120,7 +120,7 @@ std::string to_json(const std::vector<std::pair<std::string, val>>& in) {
 decltype(auto) get_rsa_private_key(std::string keystr) {
   auto bio_free = [](BIO* x){BIO_free(x);};
   std::unique_ptr<BIO, decltype(bio_free)> mem{
-    BIO_new_mem_buf(keystr.c_str(), keystr.size()), bio_free};
+    BIO_new_mem_buf(reinterpret_cast<void *>(&keystr[0]), keystr.size()), bio_free};
 
 
   auto kk = PEM_read_bio_RSAPrivateKey(mem.get(), nullptr, 0, nullptr);
