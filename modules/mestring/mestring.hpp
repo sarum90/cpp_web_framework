@@ -134,6 +134,7 @@ private:
   friend std::string to_printable(const mestring &mes);
   friend constexpr mestring make_mestring(const char* c);
   friend constexpr mestring make_mestring(const char* c, int n);
+  friend constexpr mestring make_mestring(const std::string& s);
 
 };
 
@@ -332,6 +333,10 @@ constexpr mestring make_mestring(const char* c) {
 
 constexpr mestring make_mestring(const char* c, int n) {
   return mestring(c, n);
+}
+
+constexpr mestring make_mestring(const std::string& s) {
+  return mestring(s.c_str(), s.size());
 }
 
 // For pretty-printing in general.

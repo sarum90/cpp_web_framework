@@ -1,3 +1,4 @@
+#pragma once
 
 #include "reactor.hpp"
 #include "net.hpp"
@@ -23,6 +24,15 @@ struct response {
     return def;
   }
 };
+
+inline std::ostream& operator<<(std::ostream& o, const response& r) {
+  o << r.protocol << " " << r.version << " " << r.status_code << " " << r.status << "\n";
+  for (const auto& h: r.headers) {
+    o << h.first << ": " << h.second << "\n";
+  }
+  o << r.content;
+  return o;
+}
 
 template <class R>
 class parser {
@@ -111,22 +121,40 @@ public:
   client(reactor * r): r_(r) {}
 
   future<response> request_over_socket(
+      mes::mestring_cat method,
       mes::mestring_cat host,
       mes::mestring_cat path,
-      net::readwritable* skt)
+      net::readwritable* skt,
+      mes::mestring_cat content,
+      std::vector<std::pair<mes::mestring_cat, mes::mestring_cat>> headers)
   {
     auto* r = r_;
     auto br = make_buffered_reader(r, skt);
-    return do_with(std::move(br), response{}, [s=skt, r=r, path=path, host=host](auto& reader, auto& res) mutable {
+    return do_with(std::move(br), response{}, [headers=std::move(headers), content=content, method=method, s=skt, r=r, path=path, host=host](auto& reader, auto& res) mutable {
       auto* rdr = &reader;
       mes::mestring_cat mc;
-      mc += "GET ";
+      mc += method;
+      mc += " ";
       mc += path;
       mc += " HTTP/1.1\r\nHost: ";
       mc += host;
-      mc += "\r\n\r\n";
+      mc += "\r\nContent-Length: ";
       return reax::write(r, s, std::move(mc))
-      .then([r=r, s=s, rdr=rdr, res=&res]() mutable {
+      .then([headers=std::move(headers), r=r, s=s, content=content]() {
+        return do_with(std::to_string(content.size()), [headers=std::move(headers), r=r, s=s, content=content](auto& str) {
+          mes::mestring_cat mc;
+          mc += mes::make_mestring(str);
+          for (const auto& h: headers) {
+            mc += "\r\n";
+            mc += h.first;
+            mc += ": ";
+            mc += h.second;
+          }
+          mc += "\r\n\r\n";
+          mc += content;
+          return reax::write(r, s, std::move(mc));
+        });
+      }).then([r=r, s=s, rdr=rdr, res=&res]() mutable {
         return do_with(make_parser(r, rdr), [r=r, res=res](auto& p){
             return p.read_up_to("/").then([&p=p, res=res](auto m) {
               res->protocol = std::move(m);
@@ -140,10 +168,17 @@ public:
             }).then([&p=p, r=r, res=res](auto m) mutable {
               res->status = std::move(m);
               return client::read_headers(&p, r, res);
-            }).then([&p=p, res=res]() {
+            }).then([&p=p, r=r, res=res]() {
+              auto tr = res->get_header("Transfer-Encoding", "xx");
+              if (tr == "chunked") {
+                return client::read_chunked(&p, r, mes::mestring_cat{});
+              }
               auto m = res->get_header("Content-Length", "-1");
-              int len = mes::parse_int(m);
-              return p.read_n(len);
+              if (m != "-1") {
+                int len = mes::parse_int(m);
+                return p.read_n(len);
+              }
+              return p.read_n(10);
             }).then([res=res](auto m) {
               res->content = std::move(m);
               return std::move(*res);
@@ -154,6 +189,14 @@ public:
   }
 
   future<response> get(mes::mestring url) {
+    return request("GET", url, "", {});
+  }
+
+  future<response> request(
+      mes::mestring_cat method,
+      mes::mestring url,
+      mes::mestring_cat content,
+      std::vector<std::pair<mes::mestring_cat, mes::mestring_cat>> headers) {
     client* c = this;
     auto p_hpa = mes::static_split_first<2>(url, "://");
     auto proto = std::get<0>(p_hpa);
@@ -187,9 +230,9 @@ public:
       return net::connect_default_ssl_to(t->r_, ep, host).then([](auto s) -> std::unique_ptr<net::readwritable> {
         return std::make_unique<decltype(s)>(std::move(s));
       });
-    }).then([me=this, path=path, host=host](std::unique_ptr<net::readwritable> skt) {
-      return do_with(std::move(skt), [me=me, host=host, path=path](auto& s) {
-        return me->request_over_socket(host, path, s.get());
+    }).then([headers=std::move(headers), content=content, method=method, me=this, path=path, host=host](std::unique_ptr<net::readwritable> skt) {
+      return do_with(std::move(skt), [headers=std::move(headers), content=content, method=method, me=me, host=host, path=path](auto& s) {
+        return me->request_over_socket(method, host, path, s.get(), content, headers);
       });
     });
   }
@@ -211,11 +254,29 @@ private:
     });
   }
 
+  template<class T>
+  static future<mes::mestring_cat> read_chunked(parser<T> * p, reactor * r, mes::mestring_cat res)  {
+    return p->read_up_to("\r\n").then([p=p, r=r, res=std::move(res)](auto m) {
+      auto val = mes::substr(m.begin(), mes::find_it(m, ";"));
+      auto count = mes::parse_int_16(val);
+      if (count == 0) {
+        return p->read_n(2).then([res=std::move(res)](auto x) {return res;});
+      } else {
+        return p->read_n(count).then([p=p, res=std::move(res)](auto me) mutable {
+          res += me;
+          return p->read_n(2).then([res=std::move(res)](auto x) {return res;});
+        }).then([p=p, r=r](auto res){
+          return read_chunked(p, r, std::move(res));
+        });
+      }
+    });
+  }
+
   reactor * r_;
 };
 
 
-decltype(auto) get(reactor * r, mes::mestring url) {
+inline decltype(auto) get(reactor * r, mes::mestring url) {
   return do_with(client{r}, [url=url](client & c) {
     return c.get(url);
   });

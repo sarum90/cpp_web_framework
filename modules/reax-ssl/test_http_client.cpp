@@ -53,9 +53,12 @@ suite<> http_client("Simple tests for HTTP Client.", [](auto &_) {
         
         http::client c(&e.r);
         c.request_over_socket(
+            "POST",
             "host.name",
             "/doggy",
-            skt.get()
+            skt.get(),
+            "Content",
+            {{"HEAD", "DER"}}
         ).then([&](auto r) {
           resp = r;
         });
@@ -70,6 +73,53 @@ suite<> http_client("Simple tests for HTTP Client.", [](auto &_) {
       expect(resp.content, equal_to("ohhai"));
       auto i1 = skt->written_.find('\r');
       std::string firstline = std::string(skt->written_.begin(), skt->written_.begin() + i1);
-      expect(firstline, equal_to("GET /doggy HTTP/1.1"));
+      expect(firstline, equal_to("POST /doggy HTTP/1.1"));
+  });
+
+  _.test("Transfer Encoding chunked", []() {
+      http::response resp;
+      std::unique_ptr<test_rw> skt;
+      {
+        executing_reactor e;
+        skt = std::make_unique<test_rw>(&e.r);
+        skt->to_read_ = "HTTP/1.1 200 OK\r\n"
+          "Date: Mon, 27 Jul 2009 12:28:53 GMT\r\n"
+          "Server: Apache/2.2.14 (Win32)\r\n"
+          "Last-Modified: Wed, 22 Jul 2009 19:15:56 GMT\r\n"
+          "Transfer-Encoding: chunked\r\n"
+          "Content-Type: text/html\r\n"
+          "Connection: Closed\r\n"
+          "\r\n"
+          "a;extension\r\n"
+          "1234567890\r\n"
+          "3\r\n"
+          "abc\r\n"
+          "3;extension\r\n"
+          "a\r\n\r\n"
+          "0;extension\r\n\r\n";
+        
+        http::client c(&e.r);
+        c.request_over_socket(
+            "POST",
+            "host.name",
+            "/doggy",
+            skt.get(),
+            "Content",
+            {{"HEAD", "DER"}}
+        ).then([&](auto r) {
+          resp = r;
+        });
+
+      }
+      expect(resp.status_code, equal_to(200));
+      expect(resp.version, equal_to("1.1"));
+      expect(resp.protocol, equal_to("HTTP"));
+      expect(resp.status, equal_to("OK"));
+      expect(resp.get_header("Content-Type", ""), equal_to("text/html"));
+      expect(resp.get_header("Bad-header", "def"), equal_to("def"));
+      expect(resp.content, equal_to("1234567890abca\r\n"));
+      auto i1 = skt->written_.find('\r');
+      std::string firstline = std::string(skt->written_.begin(), skt->written_.begin() + i1);
+      expect(firstline, equal_to("POST /doggy HTTP/1.1"));
   });
 });
