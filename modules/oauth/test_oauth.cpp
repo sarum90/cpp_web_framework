@@ -42,11 +42,3 @@ suite<> oauth_basic("oauth to google.", {requires_secrets("Uses Google Storage."
   });
 
 });
-
-suite<> other_test("Another test",  [](auto &_) {
-
-  _.test("Testy thing", []() {
-      expect(1, equal_to(1));
-  });
-
-});
