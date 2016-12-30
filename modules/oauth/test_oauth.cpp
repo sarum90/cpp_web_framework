@@ -6,7 +6,13 @@
 using namespace meoauth;
 using namespace mettle;
 
-suite<> oauth_basic("oauth to google.", [](auto &_) {
+bool_attr rs("requires_secrets", test_action::skip);
+
+decltype(auto) requires_secrets(const std::string& s) {
+  return rs("Requires Test secrets: " + s);
+}
+
+suite<> oauth_basic("oauth to google.", {requires_secrets("Uses Google Storage.")},  [](auto &_) {
 
   _.test("Simple oauth and get bucket", []() {
     std::string at;
@@ -33,6 +39,14 @@ suite<> oauth_basic("oauth to google.", [](auto &_) {
       });
     }
     expect(c, equal_to("Hello World\n"));
+  });
+
+});
+
+suite<> other_test("Another test",  [](auto &_) {
+
+  _.test("Testy thing", []() {
+      expect(1, equal_to(1));
   });
 
 });
