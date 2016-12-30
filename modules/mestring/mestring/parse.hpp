@@ -17,7 +17,7 @@ decltype(auto) lstrip(T t) {
   return substr(i, t.end());
 }
 
-template<class T>
+template<class T, int base=10>
 constexpr int parse_int(T me) {
   int retval = 0;
   auto c = me.begin();
@@ -26,9 +26,9 @@ constexpr int parse_int(T me) {
   }
 
   constexpr int mx = std::numeric_limits<int>::max();
-  constexpr int mxd10 = mx / 10;
+  constexpr int mxd10 = mx / base;
   constexpr int mn = std::numeric_limits<int>::min();
-  constexpr int mnd10 = mn / 10;
+  constexpr int mnd10 = mn / base;
   if (*c == '-') {
     ++c;
     if (c == me.end()) {
@@ -36,13 +36,19 @@ constexpr int parse_int(T me) {
     }
     for (;c != me.end(); ++c) {
       int val = *c - '0';
-      if (val < 0 || val > 9) {
+      if (*c >= 'a' && *c <= 'z') {
+        val = *c - 'a' + 10;
+      }
+      if (*c >= 'A' && *c <= 'Z') {
+        val = *c - 'A' + 10;
+      }
+      if (val < 0 || val > base-1) {
         throw parse_error("Error parsing int.");
       }
       if (mnd10 > retval) {
         throw parse_error("Parse integer underflow.");
       }
-      retval *= 10;
+      retval *= base;
       if (mn + val > retval) {
         throw parse_error("Parse integer underflow.");
       }
@@ -52,13 +58,19 @@ constexpr int parse_int(T me) {
   } else {
     for (;c != me.end(); ++c) {
       int val = *c - '0';
-      if (val < 0 || val > 9) {
+      if (*c >= 'a' && *c <= 'z') {
+        val = *c - 'a' + 10;
+      }
+      if (*c >= 'A' && *c <= 'Z') {
+        val = *c - 'A' + 10;
+      }
+      if (val < 0 || val > base-1) {
         throw parse_error("Error parsing int.");
       }
       if (mxd10 < retval) {
         throw parse_error("Parse integer overflow.");
       }
-      retval *= 10;
+      retval *= base;
       if (mx - val < retval) {
         throw parse_error("Parse integer overflow.");
       }
@@ -66,6 +78,11 @@ constexpr int parse_int(T me) {
     }
     return retval;
   }
+}
+
+template<class T>
+constexpr int parse_int_16(T me) {
+  return parse_int<T, 16>(me);
 }
 
 template <int n, class T>

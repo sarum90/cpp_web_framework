@@ -30,3 +30,5 @@ test:
 	$(MAKE) -C modules/webserver/ test
 	$(MAKE) -C modules/reax/ test
 	$(MAKE) -C modules/reax-ssl/ test
+	$(MAKE) -C modules/base64/ test
+	$(MAKE) -C modules/oauth/ test

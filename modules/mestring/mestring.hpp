@@ -8,6 +8,7 @@ namespace mes {
 struct mestring;
 
 constexpr mestring make_mestring(const char* c, int n);
+constexpr mestring make_mestring(const char* c);
 
 struct mestring {
 
@@ -133,6 +134,7 @@ private:
   friend std::string to_printable(const mestring &mes);
   friend constexpr mestring make_mestring(const char* c);
   friend constexpr mestring make_mestring(const char* c, int n);
+  friend constexpr mestring make_mestring(const std::string& s);
 
 };
 
@@ -251,7 +253,7 @@ public:
     return (*this);
   }
 
-  bool operator==(const mestring& m) {
+  bool operator==(const mestring& m) const {
     if (size() != m.size()) {
       return false;
     }
@@ -265,6 +267,10 @@ public:
       ++ii;
     }
     return true;
+  }
+
+  bool operator==(const char * c) const {
+    return (*this) == make_mestring(c);
   }
 
   const char& operator[](int n) {
@@ -327,6 +333,10 @@ constexpr mestring make_mestring(const char* c) {
 
 constexpr mestring make_mestring(const char* c, int n) {
   return mestring(c, n);
+}
+
+constexpr mestring make_mestring(const std::string& s) {
+  return mestring(s.c_str(), s.size());
 }
 
 // For pretty-printing in general.
