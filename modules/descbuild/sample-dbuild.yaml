@@ -1,0 +1,12 @@
+
+targets:
+  foo:
+    cpp:
+      headers: [foo.hpp]
+      srcs: [foo.cpp]
+      deps: []
+  test_foo:
+    mettle_test:
+      srcs: [test-foo.cpp]
+      deps: [foo]
+
