@@ -1,12 +1,9 @@
-
-targets:
-  foo:
-    cpp:
-      headers: [foo.hpp]
-      srcs: [foo.cpp]
-      deps: []
-  test_foo:
-    mettle_test:
-      srcs: [test-foo.cpp]
-      deps: [foo]
+cpptargets:
+  target_a:
+    headers: [a.h, b.h]
+    sources: [a.cpp, b.cpp]
+    dependencies: [foo, bar]
+    description: cat
+    vals: [0, 2, 3]
+    ver: 123
 

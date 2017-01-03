@@ -1,7 +1,0 @@
-
-builders:
-  cpp:
-    exec_builder:
-  mettle_test:
-    exec_builder:
-
