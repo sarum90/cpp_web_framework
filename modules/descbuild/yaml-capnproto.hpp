@@ -47,7 +47,6 @@ encoded_capnproto encode_yaml_to(const YY& yaml) {
 
   auto& message = *p.message;
 
-
   auto schema = capnp::Schema::from<PROTO>();
 
   auto outmessage = message.initRoot<::capnp::DynamicStruct>(schema);
@@ -86,5 +85,70 @@ capnp::FlatArrayMessageReader make_reader(const std::string& s) {
   };
   return capnp::FlatArrayMessageReader(x);
 }
+
+namespace {
+
+inline void to_yaml_impl(capnp::DynamicValue::Reader value,  YAML::Emitter& out) {
+  switch (value.getType()) {
+    case capnp::DynamicValue::INT: {
+      out << value.as<int>();
+      break;
+		}
+    case capnp::DynamicValue::TEXT: {
+      out << value.as<capnp::Text>().cStr();
+      break;
+		}
+    case capnp::DynamicValue::STRUCT: {
+      auto structValue = value.as<capnp::DynamicStruct>();
+      out << YAML::BeginMap;
+      for (auto field: structValue.getSchema().getFields()) {
+        if (!structValue.has(field)) continue;
+        out << YAML::Key << field.getProto().getName().cStr();
+        out << YAML::Value;
+				to_yaml_impl(structValue.get(field), out);
+      }
+      out << YAML::EndMap;
+			
+      break;
+    }
+    case capnp::DynamicValue::LIST: {
+      out << YAML::BeginSeq;
+      for (auto element: value.as<capnp::DynamicList>()) {
+        to_yaml_impl(element, out);
+      }
+      out << YAML::EndSeq;
+      break;
+    }
+  }
+  
+}
+
+}
+
+template<class PROTO>
+std::string to_json_yaml(const PROTO& p) {
+  auto reader = capnp::toDynamic(p);
+
+  YAML::Emitter out;
+  out << YAML::Flow;
+  out << YAML::DoubleQuoted;
+
+  to_yaml_impl(reader, out);
+
+  return std::string(out.c_str());
+}
+
+template<class PROTO>
+std::string to_yaml(const PROTO& p) {
+  auto reader = capnp::toDynamic(p);
+
+  YAML::Emitter out;
+
+  to_yaml_impl(reader, out);
+
+  return std::string(out.c_str());
+}
+
+
 
 }
