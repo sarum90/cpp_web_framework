@@ -50,9 +50,13 @@ suite<> cyaml_basic("simple_encode", [](auto &_) {
 
       auto s = cyaml::to_yaml(target.asReader());
 
-      std::cout << s << std::endl;
+      auto result = ""
+        "headers:\n"
+        "  - a.h\n"
+        "  - b.h\n"
+        "ver: 0";
 
-      expect(s, equal_to("{\"headers\": [\"a.h\", \"b.h\"], \"ver\": 0}"));
+      expect(s, equal_to(result));
   });
 
 });

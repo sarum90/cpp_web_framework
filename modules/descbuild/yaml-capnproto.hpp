@@ -90,8 +90,25 @@ namespace {
 
 inline void to_yaml_impl(capnp::DynamicValue::Reader value,  YAML::Emitter& out) {
   switch (value.getType()) {
+    case capnp::DynamicValue::BOOL: {
+      out << value.as<bool>();
+      break;
+    }
+    case capnp::DynamicValue::FLOAT: {
+      out << value.as<double>();
+      break;
+    }
+    case capnp::DynamicValue::UINT: {
+      out << value.as<unsigned int>();
+      break;
+    }
     case capnp::DynamicValue::INT: {
       out << value.as<int>();
+      break;
+		}
+    case capnp::DynamicValue::DATA: {
+      auto d = value.as<capnp::Data>();
+      out << YAML::Binary(d.begin(), d.size());
       break;
 		}
     case capnp::DynamicValue::TEXT: {
@@ -119,6 +136,12 @@ inline void to_yaml_impl(capnp::DynamicValue::Reader value,  YAML::Emitter& out)
       out << YAML::EndSeq;
       break;
     }
+    case capnp::DynamicValue::ENUM:
+    case capnp::DynamicValue::UNKNOWN:
+    case capnp::DynamicValue::VOID:
+    case capnp::DynamicValue::CAPABILITY:
+    case capnp::DynamicValue::ANY_POINTER:
+      throw std::runtime_error("Unhandled capnproto type");
   }
   
 }
@@ -132,6 +155,7 @@ std::string to_json_yaml(const PROTO& p) {
   YAML::Emitter out;
   out << YAML::Flow;
   out << YAML::DoubleQuoted;
+  out << YAML::TrueFalseBool;
 
   to_yaml_impl(reader, out);
 
