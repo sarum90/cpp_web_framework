@@ -62,13 +62,13 @@ LIBDIR_FLAGS=$(for x in $LIBDIRS; do echo -n "-L${ROOT}/$x "; done)
 
 export LDFLAGS="$LIBDIR_FLAGS"
 
-echo PATH = $PATH
-echo CXX = $CXX
-echo CC = $CC
-echo CXXFLAGS = $CXXFLAGS
-echo CCFLAGS = $CCFLAGS
-echo LDFLAGS = $LDFLAGS
-
-echo "RUNNING:" "$@"
+# Debug nonsense:
+# echo PATH = $PATH
+# echo CXX = $CXX
+# echo CC = $CC
+# echo CXXFLAGS = $CXXFLAGS
+# echo CCFLAGS = $CCFLAGS
+# echo LDFLAGS = $LDFLAGS
+# echo "RUNNING:" "$@"
 
 "$@"

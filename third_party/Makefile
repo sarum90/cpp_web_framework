@@ -6,6 +6,8 @@ all:
 	$(MAKE) -C bfg9000/
 	$(MAKE) -C boost
 	$(MAKE) -C mettle
+	$(MAKE) -C capnproto/
+	$(MAKE) -C yaml-cpp/
 
 .PHONY: clean
 clean:
@@ -14,3 +16,5 @@ clean:
 	$(MAKE) -C bfg9000/ clean
 	$(MAKE) -C boost clean
 	$(MAKE) -C mettle clean
+	$(MAKE) -C capnproto/ clean
+	$(MAKE) -C yaml-cpp/ clean
