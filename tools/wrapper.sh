@@ -21,6 +21,7 @@ PATHS="
 build/root/native/mettle/bin
 build/root/native/patchelf/bin
 build/root/native/gcloud/bin
+build/root/native/capnproto/usr/local/bin/
 "
 
 export PATH="$(for x in $PATHS; do echo -n ${ROOT}/${x}:; done):$PATH"
@@ -30,6 +31,7 @@ export CC=clang
 LD_DIRS="
 build/root/native/boost/lib
 build/root/native/mettle/lib
+build/root/native/capnproto/usr/local/lib/
 "
 
 LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}
@@ -40,6 +42,7 @@ export BOOST_ROOT=${ROOT}/build/root/native/boost
 INCLUDES="
 build/root/native/boost/include
 build/root/native/mettle/include
+build/root/native/capnproto/usr/local/include/
 "
 INCLUDE_FLAGS=$(for x in $INCLUDES; do echo -n "-I${ROOT}/$x "; done)
 
@@ -53,18 +56,19 @@ LIBDIRS="
 build/root/native/boost/lib/
 build/root/native/boost/bin/
 build/root/native/mettle/lib/
+build/root/native/capnproto/usr/local/lib/
 "
 LIBDIR_FLAGS=$(for x in $LIBDIRS; do echo -n "-L${ROOT}/$x "; done)
 
 export LDFLAGS="$LIBDIR_FLAGS"
 
-echo PATH = $PATH
-echo CXX = $CXX
-echo CC = $CC
-echo CXXFLAGS = $CXXFLAGS
-echo CCFLAGS = $CCFLAGS
-echo LDFLAGS = $LDFLAGS
-
-echo "RUNNING:" "$@"
+# Debug nonsense:
+# echo PATH = $PATH
+# echo CXX = $CXX
+# echo CC = $CC
+# echo CXXFLAGS = $CXXFLAGS
+# echo CCFLAGS = $CCFLAGS
+# echo LDFLAGS = $LDFLAGS
+# echo "RUNNING:" "$@"
 
 "$@"

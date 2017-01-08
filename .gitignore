@@ -3,3 +3,5 @@
 /travis-secrets/decrypted/
 *.swo
 *.swp
+*.capnp.h
+*.capnp.c++

@@ -335,6 +335,15 @@ constexpr mestring make_mestring(const char* c, int n) {
   return mestring(c, n);
 }
 
+template<int N>
+constexpr mestring make_mestring(const char (&c)[N]){
+  return make_mestring(c, N);
+}
+
+inline mestring make_mestring_u(const unsigned char* c, int n) {
+  return make_mestring(reinterpret_cast<const char *>(c), n);
+}
+
 constexpr mestring make_mestring(const std::string& s) {
   return mestring(s.c_str(), s.size());
 }

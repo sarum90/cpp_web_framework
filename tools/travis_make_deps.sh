@@ -27,7 +27,20 @@ gcc --version && g++ --version
 make cmake
 export PATH=$PWD/build/root/native/cmake/bin:$PATH
 cmake --version
-make emsdk
+
+EMSDK_HASH=$(./tools/emsdk_hash.sh)
+if curl --fail --head https://storage.googleapis.com/mewert-cpp-project-test-resources/deps/emsdk_${EMSDK_HASH}.tar.gz >/dev/null
+then
+  echo "Emscripten already built, downloading"
+  mkdir -p build
+  (cd build && curl https://storage.googleapis.com/mewert-cpp-project-test-resources/deps/emsdk_${EMSDK_HASH}.tar.gz | tar xz)
+else
+  make emsdk
+  (cd build && tar cvzf ${EMSDK_HASH}.tar.gz root/native/emsdk/)
+  $GSUTIL cp -a public-read build/${EMSDK_HASH}.tar.gz gs://mewert-cpp-project-test-resources/deps/emsdk_${EMSDK_HASH}.tar.gz
+  rm build/${EMSDK_HASH}.tar.gz
+fi
+
 source build/root/native/emsdk/emsdk_env.sh
 clang++ --version
 make deps
