@@ -1,7 +1,7 @@
 
 include ../../common.mk
 
-SRCS := test.cpp target.capnp.c++ sample_type.capnp.c++ ../mestring/mestring.cpp
+SRCS := test.cpp sample_type.capnp.c++ ../mestring/mestring.cpp
 INCLUDES := -I../reax/ -I../mestring/ -I$(NATIVE_PREFIX)/yaml-cpp/usr/local/include/ -I../
 
 LIBS := -lcapnp -lkj -lyaml-cpp -L$(NATIVE_PREFIX)/yaml-cpp/usr/local/lib/
@@ -12,7 +12,6 @@ test: proto
 	mettle --show-terminal --output=verbose --color=always $(METTLE_ARGS) ./test
 
 proto:
-	capnp compile -oc++ target.capnp
 	capnp compile -oc++ sample_type.capnp -I$(NATIVE_PREFIX)/capnproto/usr/local/include/
 
 
