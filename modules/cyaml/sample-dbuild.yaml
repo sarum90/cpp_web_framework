@@ -1,9 +1,0 @@
-cpptargets:
-  target_a:
-    headers: [a.h, b.h]
-    sources: [a.cpp, b.cpp]
-    dependencies: [foo, bar]
-    description: cat
-    vals: [0, 2, 3]
-    ver: 123
-
