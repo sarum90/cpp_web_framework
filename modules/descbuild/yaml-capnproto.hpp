@@ -7,6 +7,7 @@
 #include <capnp/dynamic.h>
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
+#include "base64/base64.hpp"
 
 namespace cyaml {
 
@@ -40,6 +41,119 @@ public:
   std::unique_ptr<::capnp::MallocMessageBuilder> message;
 };
 
+namespace {
+
+void encode_into(capnp::DynamicStruct::Builder& b, const YAML::Node& y);
+
+struct list_ops {
+  template <class T>
+  void set(T x) {list.set(index, x);}
+
+  decltype(auto) init(){return list[index];}
+
+  decltype(auto) init_list(int ii){return list.init(index, ii);}
+
+  capnp::DynamicList::Builder list;
+  int index;
+};
+
+struct struct_ops {
+  template <class T>
+  void set(T x) {str.set(key, x);}
+
+  decltype(auto) init() {return str.init(key);}
+
+  decltype(auto) init_list(int i) {return str.init(key, i);}
+
+  capnp::DynamicStruct::Builder str;
+  const char * key;
+};
+
+template<typename OPS>
+void encode_val(::capnp::Type ty, const YAML::Node& y, OPS ops) {
+    switch (ty.which()) {
+      case capnp::schema::Type::DATA: {
+        auto s = y.template as<std::string>();
+        auto dec = std::string(base64_decode(mes::make_mestring(s)));
+        auto ha = kj::heapArray<const capnp::byte>(dec.begin(), dec.end());
+        ops.set(::capnp::Data::Reader(ha));
+        break;
+      }
+      case capnp::schema::Type::TEXT:
+        ops.set(y.template as<std::string>().c_str());
+        break;
+      case capnp::schema::Type::FLOAT32:
+      case capnp::schema::Type::FLOAT64:
+        ops.set(y.template as<double>());
+        break;
+      case capnp::schema::Type::INT64:
+      case capnp::schema::Type::INT32:
+      case capnp::schema::Type::INT16:
+      case capnp::schema::Type::INT8:
+        ops.set(y.template as<int>());
+        break;
+      case capnp::schema::Type::UINT64:
+      case capnp::schema::Type::UINT32:
+      case capnp::schema::Type::UINT16:
+      case capnp::schema::Type::UINT8:
+        ops.set(y.template as<unsigned int>());
+        break;
+      case capnp::schema::Type::BOOL:
+        ops.set(y.template as<bool>());
+        break;
+      case capnp::schema::Type::VOID:
+        break;
+      case capnp::schema::Type::STRUCT: {
+        auto ds = ops.init().template as<::capnp::DynamicStruct>();
+        encode_into(ds, y);
+        break;
+      }
+      case capnp::schema::Type::ENUM:
+        ops.set(y.template as<std::string>().c_str());
+        break;
+      case capnp::schema::Type::LIST: {
+        auto ll = ops.init_list(y.size()).template as<capnp::DynamicList>();
+        for (int i = 0; i < y.size(); i++) {
+          list_ops lo;
+          lo.index = i;
+          lo.list = ll;
+          encode_val(ty.asList().getElementType(), y[i], lo);
+        }
+        break;
+      }
+      case capnp::schema::Type::INTERFACE:
+      case capnp::schema::Type::ANY_POINTER:
+        throw std::runtime_error("Unhandled encode_into");
+        break;
+    }
+  };
+
+void encode_into(capnp::DynamicStruct::Builder& b, const YAML::Node& y) {
+  for (auto const& t: y) {
+    const auto key = t.first.as<std::string>().c_str();
+    auto ty = b.getSchema().getFieldByName(key).getType();
+    if (ty.isList()) {
+      auto v = b.init(
+          key,
+          t.second.size()
+      ).as<::capnp::DynamicList>();
+      for (int i = 0; i < t.second.size(); i++) {
+        list_ops lo;
+        lo.index = i;
+        lo.list = v;
+        encode_val(v.getSchema().getElementType(), t.second[i], lo);
+      }
+    } else {
+      struct_ops so;
+      so.str = b;
+      so.key = key;
+      encode_val(ty, t.second, so);
+    }
+  }
+} 
+
+} // anonymous namespace
+
 template<class PROTO, class YY>
 encoded_capnproto encode_yaml_to(const YY& yaml) {
 
@@ -51,29 +165,7 @@ encoded_capnproto encode_yaml_to(const YY& yaml) {
 
   auto outmessage = message.initRoot<::capnp::DynamicStruct>(schema);
 
-  for (auto const& t: yaml) {
-    if (t.second.IsSequence()) {
-      auto v = outmessage.init(
-          t.first.template as<std::string>().c_str(),
-          t.second.size()
-      ).template as<::capnp::DynamicList>();
-      for (int i = 0; i < t.second.size(); i++) {
-        if(v[i].getType() == capnp::DynamicValue::TEXT) {
-          v.set(i, t.second[i].template as<std::string>().c_str());
-        } else {
-          v.set(i, t.second[i].template as<int>());
-        }
-      }
-    } else {
-      auto s = t.first.template as<std::string>();
-      const auto* c = s.c_str();
-      if (outmessage.get(c).getType() == capnp::DynamicValue::TEXT) {
-        outmessage.set(c, t.second.template as<std::string>().c_str());
-      } else {
-        outmessage.set(c, t.second.template as<int>());
-      }
-    }
-  }
+  encode_into(outmessage, yaml);
 
   return p;
 }
@@ -108,7 +200,9 @@ inline void to_yaml_impl(capnp::DynamicValue::Reader value,  YAML::Emitter& out)
 		}
     case capnp::DynamicValue::DATA: {
       auto d = value.as<capnp::Data>();
-      out << YAML::Binary(d.begin(), d.size());
+      std::string str = base64_encode(mes::make_mestring(
+            reinterpret_cast<const char *>(d.begin()), d.size()));
+      out << str;
       break;
 		}
     case capnp::DynamicValue::TEXT: {
@@ -136,9 +230,19 @@ inline void to_yaml_impl(capnp::DynamicValue::Reader value,  YAML::Emitter& out)
       out << YAML::EndSeq;
       break;
     }
-    case capnp::DynamicValue::ENUM:
-    case capnp::DynamicValue::UNKNOWN:
+    case capnp::DynamicValue::ENUM: {
+      auto enumValue =  value.as<capnp::DynamicEnum>();
+      KJ_IF_MAYBE(enumerant, enumValue.getEnumerant()) {
+        out << enumerant->getProto().getName().cStr();
+      } else {
+        out << enumValue.getRaw();
+      }
+      break;
+	  }
     case capnp::DynamicValue::VOID:
+      out << "1";
+      break;
+    case capnp::DynamicValue::UNKNOWN:
     case capnp::DynamicValue::CAPABILITY:
     case capnp::DynamicValue::ANY_POINTER:
       throw std::runtime_error("Unhandled capnproto type");

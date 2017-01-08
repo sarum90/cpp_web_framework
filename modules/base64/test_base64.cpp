@@ -61,4 +61,17 @@ suite<> base64_basic("base64", [](auto &_) {
     }
   });
 
+  _.test("Reverse base64.", []() {
+    expect(base64_decode("RkZGRg=="), equal_to("FFFF"));
+    expect(base64_decode("RkZGRg"), equal_to("FFFF"));
+    expect(base64_decode("RkZGRkY="), equal_to("FFFFF"));
+    expect(base64_decode("RkZGRkZG"), equal_to("FFFFFF"));
+    expect(base64_decode("RkZGRkZGRg=="), equal_to(std::string("FFFFFFF")));
+    expect(base64_decode("RkZGRkZGRkY="), equal_to("FFFFFFFF"));
+    expect(base64_decode("RkZGRkZGRkY"), equal_to("FFFFFFFF"));
+    expect(base64_decode("RkZGRkZGRkZG"), equal_to("FFFFFFFFF"));
+    expect(base64_decode("-_8="), equal_to("\xfb\xff"));
+    expect(base64_decode("RkZGRkZ\rGR\nkZ\tG  "), equal_to("FFFFFFFFF"));
+  });
+
 });
