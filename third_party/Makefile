@@ -9,7 +9,6 @@ all:
 	$(MAKE) -C capnproto/
 	$(MAKE) -C yaml-cpp/
 
-
 .PHONY: clean
 clean:
 	$(MAKE) -C patchelf clean
