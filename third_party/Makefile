@@ -8,6 +8,7 @@ all:
 	$(MAKE) -C mettle
 	$(MAKE) -C capnproto/
 	$(MAKE) -C yaml-cpp/
+	$(MAKE) -C smhasher/
 
 .PHONY: clean
 clean:
@@ -18,3 +19,4 @@ clean:
 	$(MAKE) -C mettle clean
 	$(MAKE) -C capnproto/ clean
 	$(MAKE) -C yaml-cpp/ clean
+	$(MAKE) -C smhasher/ clean
