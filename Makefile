@@ -33,3 +33,4 @@ test:
 	$(MAKE) -C modules/base64/ test
 	$(MAKE) -C modules/oauth/ test
 	$(MAKE) -C modules/cyaml/ test
+	$(MAKE) -C modules/hash/ test
