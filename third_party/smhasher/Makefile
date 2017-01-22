@@ -16,8 +16,8 @@ SMHASHER_NATIVE_TAG=$(NATIVE_TAGS)/smhasher
 $(SMHASHER_NATIVE_TAG): $(LOCAL_SRC_TOKEN)
 	mkdir -p $(NATIVE_SMHASHER_PREFIX)
 	mkdir -p $(LOCAL_INNER_SRC)/build
-	cd $(LOCAL_INNER_SRC)/build && $(WRAPPER) bash -c "$${CXX} $${CXXFLAGS} -c ../src/MurmurHash3.cpp -o ./MurmurHash3.o"
-	cd $(LOCAL_INNER_SRC)/build && $(WRAPPER) bash -c "ar rcs libmmh3.a ./MurmurHash3.o"
+	cd $(LOCAL_INNER_SRC)/build && $(WRAPPER) bash -c '$${CXX} $${CXXFLAGS} -c ../src/MurmurHash3.cpp -o ./MurmurHash3.o'
+	cd $(LOCAL_INNER_SRC)/build && $(WRAPPER) bash -c 'ar rcs libmmh3.a ./MurmurHash3.o'
 	mkdir -p $(NATIVE_SMHASHER_PREFIX)/usr/local/include/smhasher
 	mkdir -p $(NATIVE_SMHASHER_PREFIX)/usr/local/lib
 	cp $(LOCAL_INNER_SRC)/build/libmmh3.a $(NATIVE_SMHASHER_PREFIX)/usr/local/lib/
